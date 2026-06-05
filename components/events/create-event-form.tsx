@@ -20,7 +20,7 @@ import {
   EVENT_TYPES,
   type CreateEventInput,
 } from "@/lib/validations/event";
-import { createEventAction } from "@/app/(authenticated)/events/new/actions";
+import { createEvent } from "@/lib/actions/events";
 
 export function CreateEventForm() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export function CreateEventForm() {
     }
 
     setIsLoading(true);
-    const result = await createEventAction(parsed.data);
+    const result = await createEvent(parsed.data);
     setIsLoading(false);
 
     if (!result.success) {
@@ -133,10 +133,15 @@ export function CreateEventForm() {
           <Input
             id="startDate"
             type="date"
+            required
             value={form.startDate}
             onChange={(event) => updateField("startDate", event.target.value)}
             className="rounded-xl border border-border bg-card px-4"
+            aria-invalid={Boolean(errors.startDate)}
           />
+          {errors.startDate ? (
+            <p className="text-sm text-destructive">{errors.startDate}</p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="endDate">End date</Label>

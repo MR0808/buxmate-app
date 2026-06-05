@@ -80,8 +80,7 @@ model Verification {
 enum EventStatus {
   DRAFT
   ACTIVE
-  COMPLETED
-  CANCELLED
+  ARCHIVED
 }
 
 enum GuestStatus {

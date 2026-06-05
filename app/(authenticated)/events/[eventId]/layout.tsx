@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { EventNav } from "@/components/layout/event-nav";
+import { EventStatusBadge } from "@/components/events/event-status-badge";
+import { formatEventDateRange } from "@/lib/events/format";
 import { getOrganiserEvent } from "@/lib/events";
 
 export default async function EventLayout({
@@ -12,10 +13,7 @@ export default async function EventLayout({
 }) {
   const { eventId } = await params;
   const event = await getOrganiserEvent(eventId);
-
-  if (!event) {
-    notFound();
-  }
+  const dateRange = formatEventDateRange(event.startsAt, event.endsAt);
 
   return (
     <div className="pb-20 md:pb-10">
@@ -27,7 +25,7 @@ export default async function EventLayout({
           >
             ← Events
           </Link>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider text-primary">
                 {event.eventType}
@@ -40,10 +38,9 @@ export default async function EventLayout({
                   {event.location}
                 </p>
               ) : null}
+              <p className="mt-1 text-sm text-muted-foreground">{dateRange}</p>
             </div>
-            <p className="text-sm capitalize text-muted-foreground">
-              {event.status.toLowerCase()}
-            </p>
+            <EventStatusBadge status={event.status} className="shrink-0" />
           </div>
           <div className="mt-6">
             <EventNav eventId={event.id} />

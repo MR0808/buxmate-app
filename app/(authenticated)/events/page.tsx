@@ -1,26 +1,18 @@
 import Link from "next/link";
-import { Plus, PartyPopper } from "lucide-react";
+import { ArrowRight, Plus, PartyPopper } from "lucide-react";
+import { EventStatus } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireVerifiedOrganiser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { EventStatusBadge } from "@/components/events/event-status-badge";
+import {
+  formatCreatedDate,
+  formatEventDateRange,
+} from "@/lib/events/format";
+import { getOrganiserEvents } from "@/lib/events";
 
 export default async function EventsPage() {
-  const session = await requireVerifiedOrganiser();
-
-  const events = await prisma.event.findMany({
-    where: { organiserId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      eventType: true,
-      location: true,
-      status: true,
-      startsAt: true,
-      endsAt: true,
-    },
-  });
+  const events = await getOrganiserEvents();
+  const activeEvents = events.filter((e) => e.status !== EventStatus.ARCHIVED);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -28,13 +20,15 @@ export default async function EventsPage() {
         <div>
           <h1 className="font-heading text-3xl font-semibold">Events</h1>
           <p className="mt-2 text-muted-foreground">
-            Your private events
+            {events.length === 0
+              ? "Create and manage your private events"
+              : `${activeEvents.length} active · ${events.length} total`}
           </p>
         </div>
         <Button className="rounded-full normal-case tracking-normal" asChild>
           <Link href="/events/new">
             <Plus className="size-4" aria-hidden />
-            New event
+            Create event
           </Link>
         </Button>
       </div>
@@ -48,12 +42,15 @@ export default async function EventsPage() {
                 href={`/events/${event.id}`}
                 className="buxmate-card block p-6 transition-shadow hover:shadow-md"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-primary">
-                      {event.eventType}
-                    </p>
-                    <h2 className="mt-1 font-heading text-xl font-semibold">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs uppercase tracking-wider text-primary">
+                        {event.eventType}
+                      </p>
+                      <EventStatusBadge status={event.status} />
+                    </div>
+                    <h2 className="mt-2 font-heading text-xl font-semibold">
                       {event.name}
                     </h2>
                     {event.location ? (
@@ -61,10 +58,17 @@ export default async function EventsPage() {
                         {event.location}
                       </p>
                     ) : null}
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {formatEventDateRange(event.startsAt, event.endsAt)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Created {formatCreatedDate(event.createdAt)}
+                    </p>
                   </div>
-                  <div className="text-sm capitalize text-muted-foreground">
-                    {event.status.toLowerCase()}
-                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                    Open
+                    <ArrowRight className="size-4" aria-hidden />
+                  </span>
                 </div>
               </Link>
             ))}
@@ -73,7 +77,7 @@ export default async function EventsPage() {
           <EmptyState
             icon={PartyPopper}
             title="No events yet"
-            description="Create an event to manage guests, activities, and payments."
+            description="Create your first event to start planning activities, guests, and payments."
             action={
               <Button className="rounded-full normal-case tracking-normal" asChild>
                 <Link href="/events/new">Create event</Link>
