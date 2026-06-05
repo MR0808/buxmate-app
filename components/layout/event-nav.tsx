@@ -21,7 +21,7 @@ const navItems = [
   { href: "/activities", label: "Activities", icon: CalendarDays },
   { href: "/guests", label: "Guests", icon: Users },
   { href: "/payments", label: "Payments", icon: CreditCard },
-  { href: "/feed", label: "Feed", icon: MessageSquare },
+  { href: "/feed", label: "Updates", icon: MessageSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -1,0 +1,188 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { notFound } from "next/navigation";
+import { EventStatus, GuestStatus } from "@/generated/prisma/client";
+import { assertEventOwned } from "@/lib/activities";
+import { generateUniqueInviteToken } from "@/lib/guests/invite-token";
+import { prisma } from "@/lib/prisma";
+import { requireVerifiedOrganiser } from "@/lib/session";
+import {
+  createGuestSchema,
+  updateGuestSchema,
+  type CreateGuestInput,
+  type UpdateGuestInput,
+} from "@/lib/validations/guest";
+
+type GuestActionResult =
+  | { success: true; guestId: string }
+  | { success: false; error: string };
+
+type SimpleResult =
+  | { success: true }
+  | { success: false; error: string };
+
+type RegenerateResult =
+  | { success: true; inviteToken: string }
+  | { success: false; error: string };
+
+async function getOwnedGuestOrNotFound(
+  eventId: string,
+  guestId: string,
+  organiserId: string,
+) {
+  const guest = await prisma.eventGuest.findFirst({
+    where: {
+      id: guestId,
+      eventId,
+      event: { organiserId },
+    },
+    select: { id: true, status: true },
+  });
+
+  if (!guest) {
+    notFound();
+  }
+
+  return guest;
+}
+
+function revalidateGuestPaths(eventId: string, guestId?: string) {
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/events/${eventId}/guests`);
+  if (guestId) {
+    revalidatePath(`/events/${eventId}/guests/${guestId}`);
+    revalidatePath(`/events/${eventId}/guests/${guestId}/edit`);
+  }
+}
+
+export async function createGuest(
+  eventId: string,
+  input: CreateGuestInput,
+): Promise<GuestActionResult> {
+  const session = await requireVerifiedOrganiser();
+  const parsed = createGuestSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, error: "Please check the form and try again." };
+  }
+
+  const event = await assertEventOwned(eventId, session.user.id);
+
+  if (event.status === EventStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Cannot add guests to an archived event.",
+    };
+  }
+
+  const data = parsed.data;
+  const inviteToken = await generateUniqueInviteToken();
+
+  const guest = await prisma.eventGuest.create({
+    data: {
+      eventId,
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+      inviteToken,
+      status: GuestStatus.INVITED,
+    },
+    select: { id: true },
+  });
+
+  revalidateGuestPaths(eventId, guest.id);
+
+  return { success: true, guestId: guest.id };
+}
+
+export async function updateGuest(
+  eventId: string,
+  guestId: string,
+  input: UpdateGuestInput,
+): Promise<SimpleResult> {
+  const session = await requireVerifiedOrganiser();
+  const parsed = updateGuestSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, error: "Please check the form and try again." };
+  }
+
+  await assertEventOwned(eventId, session.user.id);
+  const owned = await getOwnedGuestOrNotFound(
+    eventId,
+    guestId,
+    session.user.id,
+  );
+
+  if (owned.status === GuestStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Archived guests cannot be edited.",
+    };
+  }
+
+  const data = parsed.data;
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: {
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+    },
+  });
+
+  revalidateGuestPaths(eventId, guestId);
+
+  return { success: true };
+}
+
+export async function archiveGuest(
+  eventId: string,
+  guestId: string,
+): Promise<SimpleResult> {
+  const session = await requireVerifiedOrganiser();
+  await assertEventOwned(eventId, session.user.id);
+  await getOwnedGuestOrNotFound(eventId, guestId, session.user.id);
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: { status: GuestStatus.ARCHIVED },
+  });
+
+  revalidateGuestPaths(eventId, guestId);
+
+  return { success: true };
+}
+
+export async function regenerateGuestInviteToken(
+  eventId: string,
+  guestId: string,
+): Promise<RegenerateResult> {
+  const session = await requireVerifiedOrganiser();
+  await assertEventOwned(eventId, session.user.id);
+  const owned = await getOwnedGuestOrNotFound(
+    eventId,
+    guestId,
+    session.user.id,
+  );
+
+  if (owned.status === GuestStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Cannot regenerate invite link for an archived guest.",
+    };
+  }
+
+  const inviteToken = await generateUniqueInviteToken();
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: { inviteToken },
+  });
+
+  revalidateGuestPaths(eventId, guestId);
+
+  return { success: true, inviteToken };
+}

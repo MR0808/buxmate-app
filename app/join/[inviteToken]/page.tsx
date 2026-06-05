@@ -1,14 +1,70 @@
 import Link from "next/link";
-import { Link2, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { notFound, redirect } from "next/navigation";
+import { CalendarDays, Link2, MapPin, Shield } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
+import { JoinGuestForm } from "@/components/guest/join-guest-form";
+import { formatEventDateRange } from "@/lib/events/format";
+import { validateInviteForJoin } from "@/lib/guest-access";
+import { readGuestSessionCookie } from "@/lib/guest-session";
 
 type JoinPageProps = {
   params: Promise<{ inviteToken: string }>;
 };
 
+function InvalidInvite({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-full flex-col">
+      <header className="border-b border-border/60 px-4 py-4 sm:px-6">
+        <Logo />
+      </header>
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-12 sm:px-6">
+        <div className="buxmate-card p-6 text-center sm:p-8">
+          <h1 className="font-heading text-2xl font-semibold">
+            Invite not available
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">{message}</p>
+          <p className="mt-6 text-sm text-muted-foreground">
+            Ask the organiser for a new link.
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default async function JoinPage({ params }: JoinPageProps) {
   const { inviteToken } = await params;
+  const result = await validateInviteForJoin(inviteToken);
+
+  if (!result) {
+    notFound();
+  }
+
+  if ("invalid" in result) {
+    const message =
+      result.invalid === "guest_archived"
+        ? "This guest invite is no longer active."
+        : result.invalid === "event_archived"
+          ? "This event is no longer available."
+          : "This invite link has expired.";
+    return <InvalidInvite message={message} />;
+  }
+
+  const { guest } = result;
+
+  const existingSession = await readGuestSessionCookie();
+  if (
+    existingSession?.guestId === guest.id &&
+    existingSession.eventSlug === guest.event.slug
+  ) {
+    redirect(`/e/${guest.event.slug}`);
+  }
+
+  const firstName = guest.name.split(" ")[0];
+  const dateRange = formatEventDateRange(
+    guest.event.startsAt,
+    guest.event.endsAt,
+  );
 
   return (
     <div className="flex min-h-full flex-col">
@@ -22,43 +78,52 @@ export default async function JoinPage({ params }: JoinPageProps) {
             <Link2 className="size-5" aria-hidden />
           </div>
 
-          <h1 className="mt-5 font-heading text-2xl font-semibold">
-            You&apos;re invited
+          <p className="mt-5 text-xs uppercase tracking-wider text-primary">
+            Private invite
+          </p>
+          <h1 className="mt-2 font-heading text-2xl font-semibold">
+            Hi {firstName}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Enter your details to join this private event. No full account
-            required — just your name and contact info.
+            You&apos;re invited to{" "}
+            <span className="font-medium text-foreground">{guest.event.name}</span>
           </p>
 
-          <div className="mt-6 space-y-4 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
-            <p className="text-sm font-medium text-foreground">Guest join form</p>
-            <p className="text-sm text-muted-foreground">
-              Name, email and phone fields will connect to invite token{" "}
-              <span className="font-mono text-xs">{inviteToken.slice(0, 8)}…</span>{" "}
-              in the next phase.
-            </p>
-          </div>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex items-start gap-2 text-muted-foreground">
+              <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{dateRange}</span>
+            </div>
+            {guest.event.location ? (
+              <div className="flex items-start gap-2 text-muted-foreground">
+                <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>{guest.event.location}</span>
+              </div>
+            ) : null}
+          </dl>
+
+          <JoinGuestForm
+            inviteToken={inviteToken}
+            initial={{
+              name: guest.name,
+              email: guest.email ?? "",
+              phone: guest.phone ?? "",
+            }}
+          />
 
           <div className="mt-6 flex gap-3 rounded-2xl border border-border/70 bg-brand-muted/50 p-4 text-sm text-muted-foreground">
             <Shield className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <p>
-              This is a private invite link. Only people with this link can
-              access the event.
+              Only people with this private link can access the event. Your
+              details are only shared with the organiser.
             </p>
           </div>
-
-          <Button
-            className="mt-6 h-11 w-full rounded-full normal-case tracking-normal"
-            disabled
-          >
-            Join event (coming soon)
-          </Button>
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Organising an event?{" "}
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            Create an account
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Organiser sign in
           </Link>
         </p>
       </main>

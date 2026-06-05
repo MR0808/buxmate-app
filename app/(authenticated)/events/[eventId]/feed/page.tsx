@@ -1,21 +1,80 @@
 import { MessageSquare } from "lucide-react";
+import { EventStatus } from "@/generated/prisma/client";
+import { CreatePostForm } from "@/components/feed/create-post-form";
+import { PostActions } from "@/components/feed/post-actions";
+import { PostCard } from "@/components/feed/post-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { getOrganiserEvent } from "@/lib/events";
+import { getOrganiserFeedPageData } from "@/lib/posts";
+import type { FeedPostType } from "@/lib/posts/post-type-labels";
 
-export default function EventFeedPage() {
+export default async function EventFeedPage({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
+  const { eventId } = await params;
+  const [event, { posts, archivedCount }] = await Promise.all([
+    getOrganiserEvent(eventId),
+    getOrganiserFeedPageData(eventId),
+  ]);
+
+  const canPost = event.status !== EventStatus.ARCHIVED;
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6">
-        <h2 className="font-heading text-xl font-semibold">Feed</h2>
+        <p className="text-xs uppercase tracking-wider text-primary">{event.name}</p>
+        <h2 className="mt-1 font-heading text-xl font-semibold">Updates</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Updates and announcements for this event.
+          Announcements and notes for your guests — not a chat thread.
         </p>
       </div>
 
-      <EmptyState
-        icon={MessageSquare}
-        title="No posts yet"
-        description="Share updates with your guests — reminders, itinerary changes, or announcements."
-      />
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+        <CreatePostForm eventId={eventId} disabled={!canPost} />
+
+        <section>
+          <h3 className="font-heading text-lg font-semibold">Posted updates</h3>
+          {archivedCount > 0 ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {archivedCount} archived update{archivedCount === 1 ? "" : "s"} hidden
+              from guests
+            </p>
+          ) : null}
+
+          {posts.length > 0 ? (
+            <div className="mt-4 space-y-4">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  type={post.type as FeedPostType}
+                  content={post.content}
+                  pinned={post.pinned}
+                  createdAt={post.createdAt}
+                  authorName={post.authorName}
+                  actions={
+                    canPost ? (
+                      <PostActions
+                        eventId={eventId}
+                        postId={post.id}
+                        pinned={post.pinned}
+                      />
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-4"
+              icon={MessageSquare}
+              title="No posts yet"
+              description="Post your first update — guests will see it on their event page."
+            />
+          )}
+        </section>
+      </div>
     </main>
   );
 }

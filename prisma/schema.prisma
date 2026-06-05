@@ -87,6 +87,7 @@ enum GuestStatus {
   INVITED
   JOINED
   DECLINED
+  ARCHIVED
 }
 
 enum RsvpStatus {
@@ -96,18 +97,32 @@ enum RsvpStatus {
   MAYBE
 }
 
+enum PaymentItemStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum PaymentStatus {
-  UNPAID
+  PENDING
   PARTIAL
   PAID
   WAIVED
 }
 
 enum PostType {
-  UPDATE
   ANNOUNCEMENT
-  PHOTO
-  PAYMENT_REMINDER
+  UPDATE
+  NOTE
+}
+
+enum PostStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ActivityStatus {
+  ACTIVE
+  ARCHIVED
 }
 
 model Event {
@@ -139,16 +154,19 @@ model Event {
 }
 
 model EventGuest {
-  id         String      @id @default(cuid())
-  eventId    String
-  userId     String?
-  name       String
-  email      String?
-  phone      String?
-  avatarPath String?
-  status     GuestStatus @default(INVITED)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id                    String      @id @default(cuid())
+  eventId               String
+  userId                String?
+  name                  String
+  email                 String?
+  phone                 String?
+  avatarPath            String?
+  inviteToken           String      @unique
+  inviteTokenExpiresAt  DateTime?
+  lastAccessedAt        DateTime?
+  status                GuestStatus @default(INVITED)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   event              Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user               User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -157,27 +175,33 @@ model EventGuest {
   inviteTokens       InviteToken[]
 
   @@index([eventId])
+  @@index([eventId, status])
   @@index([userId])
   @@index([email])
+  @@index([inviteToken])
 }
 
 model Activity {
-  id          String    @id @default(cuid())
+  id          String         @id @default(cuid())
   eventId     String
   title       String
   description String?
   location    String?
-  startsAt    DateTime?
+  startsAt    DateTime
   endsAt      DateTime?
-  costCents   Int       @default(0)
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  costCents   Int            @default(0)
+  status      ActivityStatus @default(ACTIVE)
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  event Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  rsvps ActivityRsvp[]
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rsvps        ActivityRsvp[]
+  paymentItems PaymentItem[]
 
   @@index([eventId])
+  @@index([eventId, status])
+  @@index([eventId, startsAt])
 }
 
 model ActivityRsvp {
@@ -196,30 +220,36 @@ model ActivityRsvp {
 }
 
 model PaymentItem {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   eventId     String
+  activityId  String?
   title       String
   description String?
   amountCents Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      PaymentItemStatus @default(ACTIVE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   event       Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  activity    Activity?           @relation(fields: [activityId], references: [id], onDelete: SetNull)
   allocations PaymentAllocation[]
 
   @@index([eventId])
+  @@index([eventId, status])
+  @@index([activityId])
 }
 
 model PaymentAllocation {
-  id            String        @id @default(cuid())
-  paymentItemId String
-  guestId       String
-  amountCents   Int
-  status        PaymentStatus @default(UNPAID)
-  paidAt        DateTime?
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  paymentItemId   String
+  guestId         String
+  amountCents     Int
+  amountPaidCents Int           @default(0)
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   paymentItem PaymentItem @relation(fields: [paymentItemId], references: [id], onDelete: Cascade)
   guest       EventGuest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
@@ -230,20 +260,23 @@ model PaymentAllocation {
 }
 
 model Post {
-  id            String   @id @default(cuid())
+  id            String     @id @default(cuid())
   eventId       String
   authorUserId  String?
   authorGuestId String?
-  type          PostType @default(UPDATE)
+  type          PostType   @default(UPDATE)
   content       String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  pinned        Boolean    @default(false)
+  status        PostStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   author User?  @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
   photos Photo[]
 
   @@index([eventId])
+  @@index([eventId, status])
   @@index([authorUserId])
 }
 
