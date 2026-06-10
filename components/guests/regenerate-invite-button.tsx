@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function RegenerateInviteButton({
   guestId,
   onRegenerated,
 }: RegenerateInviteButtonProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,6 +46,7 @@ export function RegenerateInviteButton({
     toast.success("New invite link generated");
     setOpen(false);
     onRegenerated?.(inviteUrl);
+    router.refresh();
   }
 
   return (
@@ -64,8 +67,7 @@ export function RegenerateInviteButton({
           <DialogTitle>Regenerate invite link?</DialogTitle>
           <DialogDescription>
             The current link will stop working immediately. Share the new link
-            with this guest. Email sending is not available yet — copy the link
-            manually.
+            with this guest, or send an invite email from their profile.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">

@@ -45,6 +45,27 @@ export async function sendOrganiserPasswordResetEmail({
   });
 }
 
+export async function sendOrganiserChangeEmailVerification({
+  user,
+  newEmail,
+  verifyUrl,
+}: {
+  user: AuthUser;
+  newEmail: string;
+  verifyUrl: string;
+}) {
+  void sendEmail({
+    to: newEmail,
+    subject: "Confirm your new Buxmate email",
+    react: VerifyEmail({
+      name: user.name,
+      verifyUrl,
+      headline: "Confirm your new email",
+      preview: `Confirm ${newEmail} for your Buxmate account`,
+    }),
+  });
+}
+
 export async function sendOrganiserMagicLinkEmail({
   email,
   url,

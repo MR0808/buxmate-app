@@ -1,20 +1,33 @@
 import { notFound } from "next/navigation";
-import { EventStatus } from "@/generated/prisma/client";
+import { EventStatus, GuestStatus } from "@/generated/prisma/client";
+import { attachCoverSignedUrls } from "@/lib/covers/queries";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
 
-const eventListSelect = {
+const eventBaseSelect = {
   id: true,
   name: true,
   slug: true,
   eventType: true,
   location: true,
   description: true,
+  coverPath: true,
   status: true,
   startsAt: true,
   endsAt: true,
   createdAt: true,
   updatedAt: true,
+} as const;
+
+const eventListSelect = {
+  ...eventBaseSelect,
+  _count: {
+    select: {
+      guests: {
+        where: { status: { not: GuestStatus.ARCHIVED } },
+      },
+    },
+  },
 } as const;
 
 export type OrganiserEventListItem = {
@@ -24,21 +37,43 @@ export type OrganiserEventListItem = {
   eventType: string;
   location: string | null;
   description: string | null;
+  coverPath: string | null;
+  coverSignedUrl: string | null;
   status: EventStatus;
   startsAt: Date | null;
   endsAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  guestCount: number;
 };
 
 export async function getOrganiserEvents() {
   const session = await requireVerifiedOrganiser();
 
-  return prisma.event.findMany({
+  const events = await prisma.event.findMany({
     where: { organiserId: session.user.id },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     select: eventListSelect,
   });
+
+  const withCovers = await attachCoverSignedUrls(events);
+
+  return withCovers.map((event) => ({
+    id: event.id,
+    name: event.name,
+    slug: event.slug,
+    eventType: event.eventType,
+    location: event.location,
+    description: event.description,
+    coverPath: event.coverPath,
+    coverSignedUrl: event.coverSignedUrl,
+    status: event.status,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+    guestCount: event._count.guests,
+  }));
 }
 
 export async function getOrganiserEvent(eventId: string) {
@@ -49,7 +84,7 @@ export async function getOrganiserEvent(eventId: string) {
       id: eventId,
       organiserId: session.user.id,
     },
-    select: eventListSelect,
+    select: eventBaseSelect,
   });
 
   if (!event) {
@@ -88,7 +123,17 @@ export async function getDashboardEventStats() {
           name: true,
           eventType: true,
           startsAt: true,
+          endsAt: true,
           location: true,
+          coverPath: true,
+          status: true,
+          _count: {
+            select: {
+              guests: {
+                where: { status: { not: GuestStatus.ARCHIVED } },
+              },
+            },
+          },
         },
       }),
       prisma.event.findMany({
@@ -101,17 +146,53 @@ export async function getDashboardEventStats() {
           eventType: true,
           status: true,
           startsAt: true,
+          endsAt: true,
           location: true,
+          coverPath: true,
+          _count: {
+            select: {
+              guests: {
+                where: { status: { not: GuestStatus.ARCHIVED } },
+              },
+            },
+          },
         },
       }),
     ]);
+
+  const [nextWithCover, recentWithCovers] = await Promise.all([
+    nextUpcoming ? attachCoverSignedUrls([nextUpcoming]) : Promise.resolve([]),
+    attachCoverSignedUrls(recentEvents),
+  ]);
 
   return {
     total,
     active,
     draft,
     archived,
-    nextUpcoming,
-    recentEvents,
+    nextUpcoming: nextWithCover[0]
+      ? {
+          id: nextWithCover[0].id,
+          name: nextWithCover[0].name,
+          eventType: nextWithCover[0].eventType,
+          status: nextWithCover[0].status,
+          startsAt: nextWithCover[0].startsAt,
+          endsAt: nextWithCover[0].endsAt,
+          location: nextWithCover[0].location,
+          coverSignedUrl: nextWithCover[0].coverSignedUrl,
+          guestCount: nextWithCover[0]._count.guests,
+        }
+      : null,
+    recentEvents: recentWithCovers.map((event) => ({
+      id: event.id,
+      name: event.name,
+      eventType: event.eventType,
+      status: event.status,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      location: event.location,
+      coverSignedUrl: event.coverSignedUrl,
+      guestCount: event._count.guests,
+    })),
   };
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { EventStatus, GuestStatus } from "@/generated/prisma/client";
 import { assertEventOwned } from "@/lib/activities";
+import { auditLog } from "@/lib/audit";
 import { generateUniqueInviteToken } from "@/lib/guests/invite-token";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
@@ -93,6 +94,12 @@ export async function createGuest(
 
   revalidateGuestPaths(eventId, guest.id);
 
+  auditLog("guest.created", {
+    userId: session.user.id,
+    eventId,
+    guestId: guest.id,
+  });
+
   return { success: true, guestId: guest.id };
 }
 
@@ -179,10 +186,89 @@ export async function regenerateGuestInviteToken(
 
   await prisma.eventGuest.update({
     where: { id: guestId },
-    data: { inviteToken },
+    data: {
+      inviteToken,
+      inviteTokenExpiresAt: null,
+    },
   });
 
   revalidateGuestPaths(eventId, guestId);
 
+  auditLog("guest.invite_regenerated", {
+    userId: session.user.id,
+    eventId,
+    guestId,
+  });
+
   return { success: true, inviteToken };
+}
+
+export async function expireGuestInviteLink(
+  eventId: string,
+  guestId: string,
+): Promise<SimpleResult> {
+  const session = await requireVerifiedOrganiser();
+  await assertEventOwned(eventId, session.user.id);
+  const owned = await getOwnedGuestOrNotFound(
+    eventId,
+    guestId,
+    session.user.id,
+  );
+
+  if (owned.status === GuestStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Cannot expire invite for an archived guest.",
+    };
+  }
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: { inviteTokenExpiresAt: new Date() },
+  });
+
+  revalidateGuestPaths(eventId, guestId);
+
+  auditLog("guest.invite_expired", {
+    userId: session.user.id,
+    eventId,
+    guestId,
+  });
+
+  return { success: true };
+}
+
+export async function reactivateGuestInviteLink(
+  eventId: string,
+  guestId: string,
+): Promise<SimpleResult> {
+  const session = await requireVerifiedOrganiser();
+  await assertEventOwned(eventId, session.user.id);
+  const owned = await getOwnedGuestOrNotFound(
+    eventId,
+    guestId,
+    session.user.id,
+  );
+
+  if (owned.status === GuestStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Cannot reactivate invite for an archived guest.",
+    };
+  }
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: { inviteTokenExpiresAt: null },
+  });
+
+  revalidateGuestPaths(eventId, guestId);
+
+  auditLog("guest.invite_reactivated", {
+    userId: session.user.id,
+    eventId,
+    guestId,
+  });
+
+  return { success: true };
 }

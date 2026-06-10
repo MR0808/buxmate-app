@@ -36,7 +36,7 @@ export type OrganiserActivity = {
 async function assertEventOwned(eventId: string, organiserId: string) {
   const event = await prisma.event.findFirst({
     where: { id: eventId, organiserId },
-    select: { id: true, name: true, status: true },
+    select: { id: true, name: true, status: true, coverPath: true },
   });
 
   if (!event) {

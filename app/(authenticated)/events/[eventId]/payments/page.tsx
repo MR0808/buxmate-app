@@ -8,6 +8,7 @@ import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
 import { formatMoney } from "@/lib/payments/format";
 import { toAllocationPaymentStatus } from "@/lib/payments/status-labels";
 import { summariseAllocations, getOrganiserPaymentsPageData } from "@/lib/payments";
+import { SendPaymentReminderButton } from "@/components/emails/send-payment-reminder-button";
 import { getOrganiserEvent } from "@/lib/events";
 
 export default async function EventPaymentsPage({
@@ -36,14 +37,19 @@ export default async function EventPaymentsPage({
             Track who owes what — no card processing yet.
           </p>
         </div>
-        {canAdd ? (
-          <Button className="rounded-full normal-case tracking-normal" asChild>
-            <Link href={`/events/${eventId}/payments/new`}>
-              <Plus className="size-4" aria-hidden />
-              Add payment
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {summary.outstanding > 0 && canAdd ? (
+            <SendPaymentReminderButton eventId={eventId} mode="bulk" />
+          ) : null}
+          {canAdd ? (
+            <Button className="rounded-full normal-case tracking-normal" asChild>
+              <Link href={`/events/${eventId}/payments/new`}>
+                <Plus className="size-4" aria-hidden />
+                Add payment
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -115,8 +121,8 @@ export default async function EventPaymentsPage({
           <EmptyState
             className="mt-4"
             icon={CreditCard}
-            title="No payment items yet"
-            description="Add a payment item and split it across your guests."
+            title="No payments yet"
+            description="Track your first shared cost and split it across guests."
             action={
               canAdd ? (
                 <Button className="rounded-full normal-case tracking-normal" asChild>
@@ -144,11 +150,22 @@ export default async function EventPaymentsPage({
                     Outstanding {formatMoney(guest.outstanding)}
                   </p>
                 </div>
-                <PaymentStatusBadge
-                  status={toAllocationPaymentStatus(
-                    guest.paymentStatus as "PENDING" | "PARTIAL" | "PAID",
-                  )}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <PaymentStatusBadge
+                    status={toAllocationPaymentStatus(
+                      guest.paymentStatus as "PENDING" | "PARTIAL" | "PAID",
+                    )}
+                  />
+                  {canAdd && guest.outstanding > 0 ? (
+                    <SendPaymentReminderButton
+                      eventId={eventId}
+                      mode="guest"
+                      guestId={guest.guestId}
+                      guestName={guest.name}
+                      outstandingCents={guest.outstanding}
+                    />
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>

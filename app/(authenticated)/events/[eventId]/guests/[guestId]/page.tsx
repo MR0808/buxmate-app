@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Mail, Pencil, Phone } from "lucide-react";
 import { GuestStatus } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
+import { SendPaymentReminderButton } from "@/components/emails/send-payment-reminder-button";
 import { ArchiveGuestSection } from "@/components/guests/archive-guest-section";
+import { SendGuestInviteButton } from "@/components/emails/send-guest-invite-button";
 import { GuestInviteLinkPanel } from "@/components/guests/guest-invite-link-panel";
+import { GuestInviteStatusPanel } from "@/components/guests/guest-invite-status-panel";
+import { GuestProfileSections } from "@/components/guests/guest-profile-sections";
 import { GuestStatusBadge } from "@/components/guests/guest-status-badge";
 import { buildGuestInviteUrl } from "@/lib/guests/invite-url";
-import { getOrganiserGuest } from "@/lib/guests";
+import { getGuestProfile } from "@/lib/guests/queries";
 import { getOrganiserEvent } from "@/lib/events";
 
 export default async function GuestDetailPage({
@@ -15,13 +19,16 @@ export default async function GuestDetailPage({
   params: Promise<{ eventId: string; guestId: string }>;
 }) {
   const { eventId, guestId } = await params;
-  const [event, guest] = await Promise.all([
+  const [event, profile] = await Promise.all([
     getOrganiserEvent(eventId),
-    getOrganiserGuest(eventId, guestId),
+    getGuestProfile(eventId, guestId),
   ]);
 
+  const { guest, rsvpSummary, paymentSummary, activityRsvps, paymentItems, recentActivity } =
+    profile;
   const isArchived = guest.status === GuestStatus.ARCHIVED;
   const inviteUrl = buildGuestInviteUrl(guest.inviteToken);
+  const canManage = event.status !== "ARCHIVED";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -43,21 +50,40 @@ export default async function GuestDetailPage({
             <GuestStatusBadge status={guest.status} />
           </div>
         </div>
-        {!isArchived ? (
-          <Button
-            variant="outline"
-            className="shrink-0 rounded-full normal-case tracking-normal"
-            asChild
-          >
-            <Link href={`/events/${eventId}/guests/${guestId}/edit`}>
-              <Pencil className="size-4" aria-hidden />
-              Edit
-            </Link>
-          </Button>
+        {!isArchived && canManage ? (
+          <div className="flex flex-wrap gap-2">
+            <SendGuestInviteButton
+              eventId={eventId}
+              guestId={guestId}
+              guestEmail={guest.email}
+              variant="default"
+              size="default"
+            />
+            {paymentSummary.outstanding > 0 ? (
+              <SendPaymentReminderButton
+                eventId={eventId}
+                mode="guest"
+                guestId={guestId}
+                guestName={guest.name}
+                outstandingCents={paymentSummary.outstanding}
+              />
+            ) : null}
+            <Button
+              variant="outline"
+              className="shrink-0 rounded-full normal-case tracking-normal"
+              asChild
+            >
+              <Link href={`/events/${eventId}/guests/${guestId}/edit`}>
+                <Pencil className="size-4" aria-hidden />
+                Edit
+              </Link>
+            </Button>
+          </div>
         ) : null}
       </div>
 
       <section className="buxmate-card space-y-4 p-6 sm:p-8">
+        <h2 className="font-heading text-lg font-semibold">Guest details</h2>
         {guest.email ? (
           <div className="flex items-center gap-2 text-sm">
             <Mail className="size-4 text-muted-foreground" aria-hidden />
@@ -76,23 +102,29 @@ export default async function GuestDetailPage({
           </p>
         ) : null}
 
-        {guest.lastAccessedAt ? (
-          <p className="text-xs text-muted-foreground">
-            Last opened invite{" "}
-            {guest.lastAccessedAt.toLocaleDateString("en-AU", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          </p>
-        ) : null}
-
-        <p className="text-xs text-muted-foreground">
-          RSVP tracking will connect to this guest in a future update.
-        </p>
       </section>
+
+      <div className="mt-6">
+        <GuestInviteStatusPanel
+          eventId={eventId}
+          guestId={guestId}
+          guestStatus={guest.status}
+          inviteTokenExpiresAt={guest.inviteTokenExpiresAt}
+          inviteSentAt={guest.inviteSentAt}
+          inviteEmailCount={guest.inviteEmailCount}
+          lastAccessedAt={guest.lastAccessedAt}
+          canManage={canManage}
+        />
+      </div>
+
+      <GuestProfileSections
+        eventId={eventId}
+        rsvpSummary={rsvpSummary}
+        paymentSummary={paymentSummary}
+        activityRsvps={activityRsvps}
+        paymentItems={paymentItems}
+        recentActivity={recentActivity}
+      />
 
       {!isArchived ? (
         <section className="mt-6">
@@ -100,7 +132,7 @@ export default async function GuestDetailPage({
             eventId={eventId}
             guestId={guestId}
             initialInviteUrl={inviteUrl}
-            canRegenerate
+            canRegenerate={false}
           />
         </section>
       ) : (

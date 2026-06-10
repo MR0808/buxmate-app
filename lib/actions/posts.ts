@@ -6,13 +6,20 @@ import { EventStatus, PostStatus } from "@/generated/prisma/client";
 import { assertEventOwned } from "@/lib/activities";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
+import { sendPostEmailsForEvent } from "@/lib/actions/emails";
 import {
   createPostSchema,
   type CreatePostInput,
 } from "@/lib/validations/post";
 
 type ActionResult =
-  | { success: true; postId: string }
+  | {
+      success: true;
+      postId: string;
+      emailsSent?: number;
+      emailsFailed?: number;
+      emailWarning?: string;
+    }
   | { success: false; error: string };
 
 type SimpleResult =
@@ -88,6 +95,35 @@ export async function createPost(
   });
 
   await revalidatePostPaths(eventId);
+
+  if (data.sendByEmail) {
+    const emailResult = await sendPostEmailsForEvent(
+      eventId,
+      data.type,
+      data.content,
+    );
+
+    if (!emailResult.success) {
+      return {
+        success: true,
+        postId: post.id,
+        emailsSent: 0,
+        emailsFailed: 0,
+        emailWarning: emailResult.error,
+      };
+    }
+
+    return {
+      success: true,
+      postId: post.id,
+      emailsSent: emailResult.sent,
+      emailsFailed: emailResult.failed,
+      emailWarning:
+        emailResult.failed > 0
+          ? `${emailResult.failed} email${emailResult.failed === 1 ? "" : "s"} could not be sent.`
+          : undefined,
+    };
+  }
 
   return { success: true, postId: post.id };
 }

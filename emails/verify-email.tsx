@@ -9,21 +9,24 @@ import {
 type VerifyEmailProps = {
   name: string;
   verifyUrl: string;
+  preview?: string;
+  headline?: string;
+  body?: string;
 };
 
-export function VerifyEmail({ name, verifyUrl }: VerifyEmailProps) {
+export function VerifyEmail({
+  name,
+  verifyUrl,
+  preview = "Verify your Buxmate account to start planning private events.",
+  headline = "Verify your email",
+  body = "Thanks for signing up to Buxmate. Tap the button below to verify your email and activate your organiser account.",
+}: VerifyEmailProps) {
   const firstName = name.split(" ")[0] || name;
 
   return (
-    <EmailLayout
-      preview="Verify your Buxmate account to start planning private events."
-      title="Verify your email"
-    >
+    <EmailLayout preview={preview} title={headline}>
       <Text style={emailText}>Hi {firstName},</Text>
-      <Text style={emailText}>
-        Thanks for signing up to Buxmate. Tap the button below to verify your
-        email and activate your organiser account.
-      </Text>
+      <Text style={emailText}>{body}</Text>
       <Section style={{ textAlign: "center", margin: "28px 0" }}>
         <Button href={verifyUrl} style={emailButton}>
           Verify my email

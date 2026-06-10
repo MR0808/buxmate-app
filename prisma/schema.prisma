@@ -12,13 +12,16 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  name                  String
+  email                 String   @unique
+  emailVerified         Boolean  @default(false)
+  image                 String?
+  notifyRsvpUpdates     Boolean  @default(true)
+  notifyGuestJoins      Boolean  @default(true)
+  notifyPaymentUpdates  Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   sessions Session[]
   accounts Account[]
@@ -120,6 +123,11 @@ enum PostStatus {
   ARCHIVED
 }
 
+enum PhotoStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum ActivityStatus {
   ACTIVE
   ARCHIVED
@@ -164,6 +172,8 @@ model EventGuest {
   inviteToken           String      @unique
   inviteTokenExpiresAt  DateTime?
   lastAccessedAt        DateTime?
+  inviteSentAt          DateTime?
+  inviteEmailCount      Int         @default(0)
   status                GuestStatus @default(INVITED)
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
@@ -173,6 +183,7 @@ model EventGuest {
   rsvps              ActivityRsvp[]
   paymentAllocations PaymentAllocation[]
   inviteTokens       InviteToken[]
+  uploadedPhotos     Photo[]
 
   @@index([eventId])
   @@index([eventId, status])
@@ -281,21 +292,29 @@ model Post {
 }
 
 model Photo {
-  id                String   @id @default(cuid())
+  id                String      @id @default(cuid())
   eventId           String
   postId            String?
   uploadedByUserId  String?
   uploadedByGuestId String?
   storagePath       String
+  originalFilename  String
+  mimeType          String
+  sizeBytes         Int
   caption           String?
-  createdAt         DateTime @default(now())
+  status            PhotoStatus @default(ACTIVE)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
-  event          Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  post           Post?  @relation(fields: [postId], references: [id], onDelete: SetNull)
-  uploadedByUser User?  @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  post            Post?       @relation(fields: [postId], references: [id], onDelete: SetNull)
+  uploadedByUser  User?       @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedByGuest EventGuest? @relation(fields: [uploadedByGuestId], references: [id], onDelete: SetNull)
 
   @@index([eventId])
+  @@index([eventId, status])
   @@index([postId])
+  @@index([uploadedByGuestId])
 }
 
 model InviteToken {

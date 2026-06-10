@@ -1,26 +1,39 @@
 import Link from "next/link";
-import { ArrowRight, Mail, Phone, Plus, Users } from "lucide-react";
-import { EventStatus, GuestStatus } from "@/generated/prisma/client";
+import { Suspense } from "react";
+import { Plus } from "lucide-react";
+import { EventStatus } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/shared/empty-state";
-import { CopyInviteLinkButton } from "@/components/guests/copy-invite-link-button";
-import { GuestStatusBadge } from "@/components/guests/guest-status-badge";
-import { buildGuestInviteUrl } from "@/lib/guests/invite-url";
-import { getOrganiserGuests } from "@/lib/guests";
+import { GuestListManager } from "@/components/guests/guest-list-manager";
+import { getOrganiserGuestsList } from "@/lib/guests/queries";
+import type { GuestSort, GuestStatusFilter } from "@/lib/guests/types";
 import { getOrganiserEvent } from "@/lib/events";
+
+type GuestsPageProps = {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    sort?: string;
+  }>;
+};
 
 export default async function EventGuestsPage({
   params,
-}: {
-  params: Promise<{ eventId: string }>;
-}) {
+  searchParams,
+}: GuestsPageProps) {
   const { eventId } = await params;
+  const query = await searchParams;
+
+  const status = (query.status as GuestStatusFilter) || "all";
+  const sort = (query.sort as GuestSort) || "newest";
+  const search = query.q?.trim() ?? "";
+
   const [event, guests] = await Promise.all([
     getOrganiserEvent(eventId),
-    getOrganiserGuests(eventId),
+    getOrganiserGuestsList(eventId, { search, status, sort }),
   ]);
 
-  const activeGuests = guests.filter((g) => g.status !== GuestStatus.ARCHIVED);
+  const activeGuests = guests.filter((g) => g.status !== "ARCHIVED");
   const canAdd = event.status !== EventStatus.ARCHIVED;
 
   return (
@@ -32,10 +45,7 @@ export default async function EventGuestsPage({
           </p>
           <h2 className="mt-1 font-heading text-xl font-semibold">Guests</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {activeGuests.length} active
-            {guests.length !== activeGuests.length
-              ? ` · ${guests.length} total`
-              : ""}
+            {activeGuests.length} active · {guests.length} shown
           </p>
         </div>
         {canAdd ? (
@@ -48,100 +58,16 @@ export default async function EventGuestsPage({
         ) : null}
       </div>
 
-      <div className="mt-8">
-        {guests.length > 0 ? (
-          <div className="grid gap-4">
-            {guests.map((guest) => {
-              const inviteUrl = buildGuestInviteUrl(guest.inviteToken);
-              const isArchived = guest.status === GuestStatus.ARCHIVED;
-
-              return (
-                <div
-                  key={guest.id}
-                  className="buxmate-card p-6"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <GuestStatusBadge status={guest.status} />
-                      </div>
-                      <Link
-                        href={`/events/${eventId}/guests/${guest.id}`}
-                        className="mt-2 block font-heading text-lg font-semibold hover:text-primary"
-                      >
-                        {guest.name}
-                      </Link>
-                      {guest.email ? (
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Mail className="size-3.5 shrink-0" aria-hidden />
-                          {guest.email}
-                        </p>
-                      ) : null}
-                      {guest.phone ? (
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Phone className="size-3.5 shrink-0" aria-hidden />
-                          {guest.phone}
-                        </p>
-                      ) : null}
-                      {guest.lastAccessedAt ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Last opened{" "}
-                          {guest.lastAccessedAt.toLocaleDateString("en-AU", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-end">
-                      {!isArchived ? (
-                        <CopyInviteLinkButton inviteUrl={inviteUrl} />
-                      ) : null}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full normal-case tracking-normal"
-                        asChild
-                      >
-                        <Link href={`/events/${eventId}/guests/${guest.id}`}>
-                          Open
-                          <ArrowRight className="size-4" aria-hidden />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full normal-case tracking-normal"
-                        asChild
-                      >
-                        <Link href={`/events/${eventId}/guests/${guest.id}/edit`}>
-                          Edit
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState
-            icon={Users}
-            title="No guests yet"
-            description="No guests yet. Add your first guest and share their private invite link."
-            action={
-              canAdd ? (
-                <Button className="rounded-full normal-case tracking-normal" asChild>
-                  <Link href={`/events/${eventId}/guests/new`}>Add guest</Link>
-                </Button>
-              ) : undefined
-            }
-          />
-        )}
-      </div>
+      <Suspense fallback={<p className="mt-6 text-sm text-muted-foreground">Loading guests...</p>}>
+        <GuestListManager
+          eventId={eventId}
+          guests={guests}
+          canManage={canAdd}
+          initialSearch={search}
+          initialStatus={status}
+          initialSort={sort}
+        />
+      </Suspense>
     </main>
   );
 }

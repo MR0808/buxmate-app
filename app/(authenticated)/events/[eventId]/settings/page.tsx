@@ -1,6 +1,9 @@
 import { EventStatus } from "@/generated/prisma/client";
 import { ArchiveEventSection } from "@/components/events/archive-event-section";
+import { DuplicateEventButton } from "@/components/events/duplicate-event-button";
+import { EventCoverManager } from "@/components/events/event-cover-manager";
 import { UpdateEventForm } from "@/components/events/update-event-form";
+import { resolveCoverSignedUrl } from "@/lib/covers/queries";
 import { getOrganiserEvent } from "@/lib/events";
 import type { UpdateEventInput } from "@/lib/validations/event";
 
@@ -16,15 +19,26 @@ export default async function EventSettingsPage({
 }) {
   const { eventId } = await params;
   const event = await getOrganiserEvent(eventId);
+  const coverSignedUrl = await resolveCoverSignedUrl(event.coverPath);
   const isArchived = event.status === EventStatus.ARCHIVED;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <h2 className="font-heading text-xl font-semibold">Event settings</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Edit event details or archive when finished
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-heading text-xl font-semibold">Event settings</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Edit event details, cover image, or archive when finished
+          </p>
+        </div>
+        {!isArchived ? (
+          <DuplicateEventButton
+            eventId={event.id}
+            eventName={event.name}
+            variant="outline"
+            size="default"
+          />
+        ) : null}
       </div>
 
       <section className="buxmate-card mb-6 space-y-3 p-6">
@@ -47,6 +61,13 @@ export default async function EventSettingsPage({
         />
       ) : (
         <>
+          <div className="mb-8">
+            <EventCoverManager
+              eventId={event.id}
+              coverSignedUrl={coverSignedUrl}
+            />
+          </div>
+
           <section className="buxmate-card p-6 sm:p-8">
             <UpdateEventForm
               eventId={event.id}

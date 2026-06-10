@@ -9,8 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatCard } from "@/components/shared/stat-card";
-import { EventStatusBadge } from "@/components/events/event-status-badge";
-import { formatEventDate, formatEventDateRange } from "@/lib/events/format";
+import { EventCard } from "@/components/events/event-card";
+import { formatEventDate } from "@/lib/events/format";
 import { getDashboardEventStats } from "@/lib/events";
 import { requireVerifiedOrganiser } from "@/lib/session";
 
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
             </h1>
             <p className="mt-3 max-w-2xl text-muted-foreground">
               Your dashboard for private events — guests, RSVPs and payments
-              will appear here as you build them out.
+              appear here as you build them out.
             </p>
           </div>
           <Button
@@ -79,21 +79,20 @@ export default async function DashboardPage() {
       {nextUpcoming ? (
         <section className="mt-8">
           <h2 className="font-heading text-xl font-semibold">Next event</h2>
-          <Link
-            href={`/events/${nextUpcoming.id}`}
-            className="buxmate-card mt-4 block p-6 transition-shadow hover:shadow-md"
-          >
-            <p className="text-xs uppercase tracking-wider text-primary">
-              {nextUpcoming.eventType}
-            </p>
-            <h3 className="mt-2 font-heading text-lg font-semibold">
-              {nextUpcoming.name}
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {formatEventDate(nextUpcoming.startsAt)}
-              {nextUpcoming.location ? ` · ${nextUpcoming.location}` : ""}
-            </p>
-          </Link>
+          <div className="mt-4">
+            <EventCard
+              href={`/events/${nextUpcoming.id}`}
+              name={nextUpcoming.name}
+              eventType={nextUpcoming.eventType}
+              status={nextUpcoming.status}
+              startsAt={nextUpcoming.startsAt}
+              endsAt={nextUpcoming.endsAt}
+              location={nextUpcoming.location}
+              guestCount={nextUpcoming.guestCount}
+              coverSignedUrl={nextUpcoming.coverSignedUrl}
+              meta={formatEventDate(nextUpcoming.startsAt)}
+            />
+          </div>
         </section>
       ) : null}
 
@@ -115,24 +114,18 @@ export default async function DashboardPage() {
         {hasEvents ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {recentEvents.map((event) => (
-              <Link
+              <EventCard
                 key={event.id}
                 href={`/events/${event.id}`}
-                className="buxmate-card block p-5 transition-shadow hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs uppercase tracking-wider text-primary">
-                    {event.eventType}
-                  </p>
-                  <EventStatusBadge status={event.status} />
-                </div>
-                <h3 className="mt-2 font-heading text-lg font-semibold">
-                  {event.name}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {formatEventDateRange(event.startsAt, null)}
-                </p>
-              </Link>
+                name={event.name}
+                eventType={event.eventType}
+                status={event.status}
+                startsAt={event.startsAt}
+                endsAt={event.endsAt}
+                location={event.location}
+                guestCount={event.guestCount}
+                coverSignedUrl={event.coverSignedUrl}
+              />
             ))}
           </div>
         ) : (

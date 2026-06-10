@@ -108,7 +108,7 @@ export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
         className="h-12 w-full rounded-full text-base normal-case tracking-normal"
         disabled={isLoading}
       >
-        {isLoading ? "Continuing..." : "Continue to event"}
+        {isLoading ? "Continuing..." : "Continue to Event"}
       </Button>
     </form>
   );

@@ -1,9 +1,16 @@
-import { getAppUrl } from "@/lib/email/app-url";
+import { getPublicAppUrl } from "@/lib/env";
+
+function getInviteBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return getPublicAppUrl();
+}
 
 export function buildGuestInviteUrl(inviteToken: string): string {
-  return `${getAppUrl()}/join/${inviteToken}`;
+  return `${getInviteBaseUrl()}/join/${inviteToken}`;
 }
 
 export function buildGuestEventUrl(eventSlug: string): string {
-  return `${getAppUrl()}/e/${eventSlug}`;
+  return `${getInviteBaseUrl()}/e/${eventSlug}`;
 }

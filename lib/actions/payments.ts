@@ -7,6 +7,7 @@ import {
   PaymentItemStatus,
   PaymentStatus,
 } from "@/generated/prisma/client";
+import { auditLog } from "@/lib/audit";
 import { assertEventOwned } from "@/lib/activities";
 import { dollarsToCents, splitAmountCents } from "@/lib/payments/format";
 import { resolveAllocationGuestIds } from "@/lib/payments";
@@ -60,6 +61,7 @@ async function getOwnedAllocationOrNotFound(
     },
     select: {
       id: true,
+      guestId: true,
       amountCents: true,
       amountPaidCents: true,
       paymentItemId: true,
@@ -219,6 +221,13 @@ export async function markAllocationPaid(
 
   revalidatePaymentPaths(eventId, allocation.paymentItemId);
   revalidateGuestEventPaths(eventId);
+
+  auditLog("payment.marked_paid", {
+    userId: session.user.id,
+    eventId,
+    allocationId,
+    guestId: allocation.guestId,
+  });
 
   return { success: true };
 }

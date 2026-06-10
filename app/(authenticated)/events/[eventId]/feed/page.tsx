@@ -5,6 +5,8 @@ import { PostActions } from "@/components/feed/post-actions";
 import { PostCard } from "@/components/feed/post-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getOrganiserEvent } from "@/lib/events";
+import { OrganiserPhotosSection } from "@/components/photos/organiser-photos-section";
+import { getOrganiserEventPhotos } from "@/lib/photos";
 import { getOrganiserFeedPageData } from "@/lib/posts";
 import type { FeedPostType } from "@/lib/posts/post-type-labels";
 
@@ -14,9 +16,10 @@ export default async function EventFeedPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  const [event, { posts, archivedCount }] = await Promise.all([
+  const [event, { posts, archivedCount }, photos] = await Promise.all([
     getOrganiserEvent(eventId),
     getOrganiserFeedPageData(eventId),
+    getOrganiserEventPhotos(eventId),
   ]);
 
   const canPost = event.status !== EventStatus.ARCHIVED;
@@ -69,12 +72,20 @@ export default async function EventFeedPage({
             <EmptyState
               className="mt-4"
               icon={MessageSquare}
-              title="No posts yet"
-              description="Post your first update — guests will see it on their event page."
+              title="No updates yet"
+              description="Post an announcement — guests will see it on their event page."
             />
           )}
         </section>
       </div>
+
+      <OrganiserPhotosSection
+        eventId={eventId}
+        photos={photos.slice(0, 6)}
+        canUpload={canPost}
+        showViewAllLink={photos.length > 0}
+        compact
+      />
     </main>
   );
 }

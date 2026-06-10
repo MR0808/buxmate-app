@@ -34,6 +34,7 @@ const defaultForm: CreatePostInput = {
   type: "ANNOUNCEMENT",
   content: "",
   pinned: false,
+  sendByEmail: false,
 };
 
 export function CreatePostForm({ eventId, disabled }: CreatePostFormProps) {
@@ -77,7 +78,13 @@ export function CreatePostForm({ eventId, disabled }: CreatePostFormProps) {
       return;
     }
 
-    toast.success("Update posted");
+    if ("emailWarning" in result && result.emailWarning) {
+      toast.warning(`Posted, but email issue: ${result.emailWarning}`);
+    } else if ("emailsSent" in result && result.emailsSent) {
+      toast.success(`Update posted and emailed ${result.emailsSent} guest${result.emailsSent === 1 ? "" : "s"}`);
+    } else {
+      toast.success("Update posted");
+    }
     setForm(defaultForm);
     router.refresh();
   }
@@ -140,18 +147,33 @@ export function CreatePostForm({ eventId, disabled }: CreatePostFormProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="post-pinned"
-            checked={form.pinned}
-            onCheckedChange={(checked) =>
-              updateField("pinned", checked === true)
-            }
-            disabled={disabled || isLoading}
-          />
-          <Label htmlFor="post-pinned" className="font-normal">
-            Pin to top
-          </Label>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="post-pinned"
+              checked={form.pinned}
+              onCheckedChange={(checked) =>
+                updateField("pinned", checked === true)
+              }
+              disabled={disabled || isLoading}
+            />
+            <Label htmlFor="post-pinned" className="font-normal">
+              Pin to top
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="post-send-email"
+              checked={form.sendByEmail}
+              onCheckedChange={(checked) =>
+                updateField("sendByEmail", checked === true)
+              }
+              disabled={disabled || isLoading}
+            />
+            <Label htmlFor="post-send-email" className="font-normal">
+              Send by email
+            </Label>
+          </div>
         </div>
       </div>
 

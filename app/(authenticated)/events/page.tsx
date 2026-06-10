@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, Plus, PartyPopper } from "lucide-react";
+import { PartyPopper, Plus } from "lucide-react";
 import { EventStatus } from "@/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import { EventStatusBadge } from "@/components/events/event-status-badge";
-import {
-  formatCreatedDate,
-  formatEventDateRange,
-} from "@/lib/events/format";
+import { DuplicateEventButton } from "@/components/events/duplicate-event-button";
+import { EventCard } from "@/components/events/event-card";
+import { formatCreatedDate } from "@/lib/events/format";
 import { getOrganiserEvents } from "@/lib/events";
 
 export default async function EventsPage() {
@@ -35,42 +33,30 @@ export default async function EventsPage() {
 
       <div className="mt-8">
         {events.length > 0 ? (
-          <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             {events.map((event) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.id}`}
-                className="buxmate-card block p-6 transition-shadow hover:shadow-md"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs uppercase tracking-wider text-primary">
-                        {event.eventType}
-                      </p>
-                      <EventStatusBadge status={event.status} />
-                    </div>
-                    <h2 className="mt-2 font-heading text-xl font-semibold">
-                      {event.name}
-                    </h2>
-                    {event.location ? (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {event.location}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {formatEventDateRange(event.startsAt, event.endsAt)}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Created {formatCreatedDate(event.createdAt)}
-                    </p>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                    Open
-                    <ArrowRight className="size-4" aria-hidden />
-                  </span>
+              <div key={event.id} className="relative">
+                <EventCard
+                  href={`/events/${event.id}`}
+                  name={event.name}
+                  eventType={event.eventType}
+                  status={event.status}
+                  startsAt={event.startsAt}
+                  endsAt={event.endsAt}
+                  location={event.location}
+                  guestCount={event.guestCount}
+                  coverSignedUrl={event.coverSignedUrl}
+                  meta={`Created ${formatCreatedDate(event.createdAt)}`}
+                />
+                <div className="absolute right-4 top-4 z-10">
+                  <DuplicateEventButton
+                    eventId={event.id}
+                    eventName={event.name}
+                    variant="ghost"
+                    size="sm"
+                  />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         ) : (

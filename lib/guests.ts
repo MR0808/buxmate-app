@@ -13,6 +13,8 @@ export const guestListSelect = {
   inviteToken: true,
   inviteTokenExpiresAt: true,
   lastAccessedAt: true,
+  inviteSentAt: true,
+  inviteEmailCount: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -28,6 +30,8 @@ export type OrganiserGuest = {
   inviteToken: string;
   inviteTokenExpiresAt: Date | null;
   lastAccessedAt: Date | null;
+  inviteSentAt: Date | null;
+  inviteEmailCount: number;
   status: GuestStatus;
   createdAt: Date;
   updatedAt: Date;

@@ -4,10 +4,54 @@ import {
   GuestStatus,
   RsvpStatus,
 } from "@/generated/prisma/client";
+import { resolveCoverSignedUrl } from "@/lib/covers/queries";
 import { readGuestSessionCookie } from "@/lib/guest-session";
+import { getGuestEventPhotos } from "@/lib/photos";
 import { getGuestPaymentData } from "@/lib/payments";
 import { getGuestEventPosts } from "@/lib/posts";
 import { prisma } from "@/lib/prisma";
+
+export async function getVerifiedGuestForSession(eventSlug?: string) {
+  const session = await readGuestSessionCookie();
+  if (!session) {
+    return null;
+  }
+
+  if (eventSlug && session.eventSlug !== eventSlug) {
+    return null;
+  }
+
+  const guest = await prisma.eventGuest.findFirst({
+    where: {
+      id: session.guestId,
+      event: { slug: session.eventSlug },
+    },
+    select: {
+      id: true,
+      eventId: true,
+      status: true,
+      event: {
+        select: {
+          slug: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!guest) {
+    return null;
+  }
+
+  if (
+    guest.status === GuestStatus.ARCHIVED ||
+    guest.event.status === EventStatus.ARCHIVED
+  ) {
+    return null;
+  }
+
+  return guest;
+}
 
 async function loadGuestFromSession(eventSlug: string) {
   const session = await readGuestSessionCookie();
@@ -37,6 +81,7 @@ async function loadGuestFromSession(eventSlug: string) {
           eventType: true,
           location: true,
           description: true,
+          coverPath: true,
           status: true,
           startsAt: true,
           endsAt: true,
@@ -88,9 +133,11 @@ export async function getGuestEventPageData(eventSlug: string) {
     },
   });
 
-  const [payments, posts] = await Promise.all([
+  const [payments, posts, photos, coverSignedUrl] = await Promise.all([
     getGuestPaymentData(guest.eventId, guest.id),
     getGuestEventPosts(guest.eventId),
+    getGuestEventPhotos(guest.eventId),
+    resolveCoverSignedUrl(guest.event.coverPath),
   ]);
 
   await prisma.eventGuest.update({
@@ -99,9 +146,16 @@ export async function getGuestEventPageData(eventSlug: string) {
   });
 
   return {
-    guest,
+    guest: {
+      ...guest,
+      event: {
+        ...guest.event,
+        coverSignedUrl,
+      },
+    },
     payments,
     posts,
+    photos,
     activities: activities.map((activity) => ({
       id: activity.id,
       title: activity.title,
@@ -130,8 +184,10 @@ export async function validateInviteForJoin(token: string) {
           id: true,
           name: true,
           slug: true,
+          eventType: true,
           location: true,
           description: true,
+          coverPath: true,
           status: true,
           startsAt: true,
           endsAt: true,
@@ -159,5 +215,15 @@ export async function validateInviteForJoin(token: string) {
     return { invalid: "expired" as const };
   }
 
-  return { guest };
+  const coverSignedUrl = await resolveCoverSignedUrl(guest.event.coverPath);
+
+  return {
+    guest: {
+      ...guest,
+      event: {
+        ...guest.event,
+        coverSignedUrl,
+      },
+    },
+  };
 }

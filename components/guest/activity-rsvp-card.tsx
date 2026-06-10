@@ -27,6 +27,7 @@ type ActivityRsvpCardProps = {
     costCents: number;
     rsvpStatus: GuestRsvpStatus;
   };
+  variant?: "default" | "timeline";
 };
 
 const RSVP_CHOICES = [
@@ -35,7 +36,11 @@ const RSVP_CHOICES = [
   { status: "NOT_GOING" as const, label: "Can't make it" },
 ];
 
-export function ActivityRsvpCard({ eventSlug, activity }: ActivityRsvpCardProps) {
+export function ActivityRsvpCard({
+  eventSlug,
+  activity,
+  variant = "default",
+}: ActivityRsvpCardProps) {
   const [status, setStatus] = useState(activity.rsvpStatus);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,14 +58,25 @@ export function ActivityRsvpCard({ eventSlug, activity }: ActivityRsvpCardProps)
     toast.success("RSVP saved");
   }
 
+  const isTimeline = variant === "timeline";
+
   return (
     <article className="buxmate-card p-5 sm:p-6">
-      <h3 className="font-heading text-lg font-semibold">{activity.title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {formatActivityTimeRange(activity.startsAt, activity.endsAt)}
-      </p>
+      {!isTimeline ? (
+        <>
+          <h3 className="font-heading text-lg font-semibold">{activity.title}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {formatActivityTimeRange(activity.startsAt, activity.endsAt)}
+          </p>
+        </>
+      ) : null}
       {activity.location ? (
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "flex items-center gap-1.5 text-sm text-muted-foreground",
+            isTimeline ? "mt-0" : "mt-1",
+          )}
+        >
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           {activity.location}
         </p>

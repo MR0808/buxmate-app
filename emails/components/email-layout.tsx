@@ -15,9 +15,21 @@ type EmailLayoutProps = {
   preview: string;
   title: string;
   children: ReactNode;
+  footerNote?: string;
 };
 
-export function EmailLayout({ preview, title, children }: EmailLayoutProps) {
+const defaultFooterNote =
+  "You received this email because of activity on your Buxmate organiser account.";
+
+const guestFooterNote =
+  "You received this email because you were invited to a private Buxmate event. This link is for you only — please do not share it.";
+
+export function EmailLayout({
+  preview,
+  title,
+  children,
+  footerNote,
+}: EmailLayoutProps) {
   return (
     <Html>
       <Head />
@@ -38,10 +50,7 @@ export function EmailLayout({ preview, title, children }: EmailLayoutProps) {
           <Text style={tagline}>
             Plan the chaos. Split the cost. Keep it private.
           </Text>
-          <Text style={footer}>
-            You received this email because of activity on your Buxmate
-            organiser account.
-          </Text>
+          <Text style={footer}>{footerNote ?? defaultFooterNote}</Text>
         </Container>
       </Body>
     </Html>
@@ -137,6 +146,8 @@ export const emailMuted = {
   lineHeight: "1.5",
   margin: "0 0 16px",
 };
+
+export { guestFooterNote };
 
 export const emailButton = {
   backgroundColor: "#e07a3a",

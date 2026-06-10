@@ -6,23 +6,35 @@ import {
   sendOrganiserPasswordResetEmail,
   sendOrganiserVerificationEmail,
 } from "@/lib/email/auth-emails";
+import { getAuthBaseUrl, getPublicAppUrl } from "@/lib/env";
 
-const appUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-  process.env.BETTER_AUTH_URL?.replace(/\/$/, "") ??
-  "http://localhost:3000";
+const appUrl = getPublicAppUrl();
+const authBaseUrl = getAuthBaseUrl();
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL ?? appUrl,
-  trustedOrigins: [appUrl, process.env.BETTER_AUTH_URL].filter(
-    (origin): origin is string => Boolean(origin),
+  baseURL: authBaseUrl,
+  trustedOrigins: [appUrl, authBaseUrl].filter(
+    (origin, index, origins) => Boolean(origin) && origins.indexOf(origin) === index,
   ),
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
   user: {
     modelName: "User",
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        const { sendOrganiserChangeEmailVerification } = await import(
+          "@/lib/email/auth-emails"
+        );
+        void sendOrganiserChangeEmailVerification({
+          user,
+          newEmail,
+          verifyUrl: url,
+        });
+      },
+    },
   },
   session: {
     modelName: "Session",

@@ -12,6 +12,7 @@ export const createPostSchema = z.object({
     .min(1, "Write your update before posting")
     .max(1000, "Keep your update under 1,000 characters"),
   pinned: z.boolean().default(false),
+  sendByEmail: z.boolean().default(false),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;

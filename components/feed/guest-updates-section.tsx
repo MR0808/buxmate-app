@@ -1,4 +1,6 @@
+import { Megaphone } from "lucide-react";
 import { PostCard } from "@/components/feed/post-card";
+import { EmptyState } from "@/components/shared/empty-state";
 import type { GuestPostListItem } from "@/lib/posts";
 import type { FeedPostType } from "@/lib/posts/post-type-labels";
 
@@ -9,9 +11,9 @@ type GuestUpdatesSectionProps = {
 export function GuestUpdatesSection({ posts }: GuestUpdatesSectionProps) {
   return (
     <section className="mt-8">
-      <h2 className="font-heading text-xl font-semibold">Updates</h2>
+      <h2 className="font-heading text-xl font-semibold">Announcements</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        News and announcements from your organiser.
+        News and updates from your organiser.
       </p>
 
       {posts.length > 0 ? (
@@ -27,9 +29,12 @@ export function GuestUpdatesSection({ posts }: GuestUpdatesSectionProps) {
           ))}
         </div>
       ) : (
-        <p className="buxmate-card mt-4 p-6 text-sm text-muted-foreground">
-          No updates yet. Check back when the organiser posts something new.
-        </p>
+        <EmptyState
+          className="mt-4"
+          icon={Megaphone}
+          title="No updates yet"
+          description="Check back when the organiser posts an announcement."
+        />
       )}
     </section>
   );

@@ -8,8 +8,12 @@ import {
   GuestStatus,
   RsvpStatus,
 } from "@/generated/prisma/client";
-import { validateInviteForJoin } from "@/lib/guest-access";
-import { readGuestSessionCookie, setGuestSessionCookie } from "@/lib/guest-session";
+import { auditLog } from "@/lib/audit";
+import {
+  getVerifiedGuestForSession,
+  validateInviteForJoin,
+} from "@/lib/guest-access";
+import { setGuestSessionCookie } from "@/lib/guest-session";
 import { prisma } from "@/lib/prisma";
 import { guestFieldsSchema, type CreateGuestInput } from "@/lib/validations/guest";
 import { z } from "zod";
@@ -23,48 +27,6 @@ const rsvpStatusSchema = z.enum([
 type ActionResult =
   | { success: true }
   | { success: false; error: string };
-
-async function getVerifiedGuestForSession(eventSlug?: string) {
-  const session = await readGuestSessionCookie();
-  if (!session) {
-    return null;
-  }
-
-  if (eventSlug && session.eventSlug !== eventSlug) {
-    return null;
-  }
-
-  const guest = await prisma.eventGuest.findFirst({
-    where: {
-      id: session.guestId,
-      event: { slug: session.eventSlug },
-    },
-    select: {
-      id: true,
-      eventId: true,
-      status: true,
-      event: {
-        select: {
-          slug: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  if (!guest) {
-    return null;
-  }
-
-  if (
-    guest.status === GuestStatus.ARCHIVED ||
-    guest.event.status === EventStatus.ARCHIVED
-  ) {
-    return null;
-  }
-
-  return guest;
-}
 
 export async function joinEventAsGuest(
   inviteToken: string,
@@ -101,6 +63,11 @@ export async function joinEventAsGuest(
   });
 
   await setGuestSessionCookie(invite.guest.id, invite.guest.event.slug);
+
+  auditLog("guest.joined", {
+    guestId: invite.guest.id,
+    eventId: invite.guest.event.id,
+  });
 
   revalidatePath(`/e/${invite.guest.event.slug}`);
   redirect(`/e/${invite.guest.event.slug}`);
@@ -195,6 +162,13 @@ export async function submitActivityRsvp(
   revalidatePath(`/events/${guest.eventId}/activities`);
   revalidatePath(`/events/${guest.eventId}/activities/${activityId}`);
   revalidatePath(`/events/${guest.eventId}/guests`);
+
+  auditLog("rsvp.submitted", {
+    guestId: guest.id,
+    eventId: guest.eventId,
+    activityId,
+    status: parsedStatus.data,
+  });
 
   return { success: true };
 }
