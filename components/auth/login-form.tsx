@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackEvent } from "@/lib/analytics";
 import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
@@ -44,6 +45,10 @@ export function LoginForm() {
       return;
     }
 
+    trackEvent("login_completed", {
+      event_category: "auth",
+      method: "email",
+    });
     toast.success("Welcome back");
     router.push("/");
     router.refresh();

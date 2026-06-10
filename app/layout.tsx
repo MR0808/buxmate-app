@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleTagManager } from '@next/third-parties/google';
 import { Geist_Mono, Noto_Sans, Playfair_Display } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
+import { getGtmId } from '@/lib/analytics';
 import { getPublicAppUrl } from '@/lib/env';
 import { cn } from '@/lib/utils';
 import './globals.css';
@@ -22,6 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 const appUrl = getPublicAppUrl();
+const gtmId = getGtmId();
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -75,9 +77,7 @@ export default function RootLayout({
                 'font-sans'
             )}
         >
-            {process.env.NEXT_PUBLIC_GTM_ID ? (
-                <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            ) : null}
+            {gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
             <body className="min-h-full flex flex-col">
                 {children}
                 <Toaster richColors position="top-center" />

@@ -6,6 +6,7 @@ import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { sendGuestInviteEmail } from "@/lib/actions/emails";
+import { trackEvent } from "@/lib/analytics";
 
 type SendGuestInviteButtonProps = {
   eventId: string;
@@ -41,6 +42,11 @@ export function SendGuestInviteButton({
       return;
     }
 
+    trackEvent("invite_email_sent", {
+      event_category: "guest",
+      source: "single",
+      count: 1,
+    });
     toast.success("Invite email sent");
     router.refresh();
   }

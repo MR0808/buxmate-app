@@ -12,6 +12,7 @@ import {
   uploadGuestPhoto,
   uploadOrganiserPhoto,
 } from "@/lib/actions/photos";
+import { trackEvent } from "@/lib/analytics";
 import { photoCaptionSchema } from "@/lib/validations/photo";
 
 type PhotoUploadFormProps = {
@@ -68,6 +69,10 @@ export function PhotoUploadForm({
       return;
     }
 
+    trackEvent("photo_uploaded", {
+      event_category: "content",
+      source: mode === "organiser" ? "organiser" : "guest",
+    });
     toast.success("Photo uploaded");
     setCaption("");
     setSelectedName(null);

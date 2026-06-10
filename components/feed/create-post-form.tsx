@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost } from "@/lib/actions/posts";
+import { trackEvent } from "@/lib/analytics";
 import {
   POST_TYPE_LABELS,
   type FeedPostType,
@@ -76,6 +77,13 @@ export function CreatePostForm({ eventId, disabled }: CreatePostFormProps) {
     if (!result.success) {
       toast.error(result.error);
       return;
+    }
+
+    if (parsed.data.type === "ANNOUNCEMENT") {
+      trackEvent("announcement_created", {
+        event_category: "content",
+        source: parsed.data.sendByEmail ? "email" : "feed",
+      });
     }
 
     if ("emailWarning" in result && result.emailWarning) {

@@ -200,6 +200,10 @@ Supabase keys:
 
 The secret key must never be exposed client-side.
 
+Analytics (optional):
+
+- NEXT_PUBLIC_GTM_ID — Google Tag Manager container ID (e.g. `GTM-XXXXXXX`). Omit in local development if you do not want GTM loaded. GA4 is configured inside GTM, not in this app.
+
 Prisma 7 is used with:
 
 - prisma.config.ts

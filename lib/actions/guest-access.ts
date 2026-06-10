@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import {
   ActivityStatus,
   EventStatus,
@@ -31,7 +30,10 @@ type ActionResult =
 export async function joinEventAsGuest(
   inviteToken: string,
   input: CreateGuestInput,
-) {
+): Promise<
+  | { success: true; eventSlug: string }
+  | { success: false; error: string }
+> {
   const parsed = guestFieldsSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false as const, error: "Please check the form and try again." };
@@ -70,7 +72,7 @@ export async function joinEventAsGuest(
   });
 
   revalidatePath(`/e/${invite.guest.event.slug}`);
-  redirect(`/e/${invite.guest.event.slug}`);
+  return { success: true, eventSlug: invite.guest.event.slug };
 }
 
 export async function updateGuestDetails(

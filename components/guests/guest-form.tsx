@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createGuest, updateGuest } from "@/lib/actions/guests";
+import { trackEvent } from "@/lib/analytics";
 import {
   createGuestSchema,
   type CreateGuestInput,
@@ -77,6 +78,14 @@ export function GuestForm({
     if (!result.success) {
       toast.error(result.error);
       return;
+    }
+
+    if (mode === "create") {
+      trackEvent("guest_added", {
+        event_category: "guest",
+        source: "form",
+        count: 1,
+      });
     }
 
     toast.success(mode === "create" ? "Guest added" : "Guest updated");

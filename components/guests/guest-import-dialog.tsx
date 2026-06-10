@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { importGuests } from "@/lib/actions/guest-bulk";
+import { trackEvent } from "@/lib/analytics";
 import { parseGuestCsv } from "@/lib/guests/csv";
 import { createGuestSchema } from "@/lib/validations/guest";
 
@@ -77,6 +78,14 @@ export function GuestImportDialog({ eventId, disabled }: GuestImportDialogProps)
     if (!result.success) {
       toast.error(result.error);
       return;
+    }
+
+    if (result.imported > 0) {
+      trackEvent("guest_added", {
+        event_category: "guest",
+        source: "import",
+        count: result.imported,
+      });
     }
 
     toast.success(

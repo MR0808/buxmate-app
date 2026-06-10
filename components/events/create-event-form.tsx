@@ -21,6 +21,7 @@ import {
   type CreateEventInput,
 } from "@/lib/validations/event";
 import { createEvent } from "@/lib/actions/events";
+import { trackEvent } from "@/lib/analytics";
 
 export function CreateEventForm() {
   const router = useRouter();
@@ -70,6 +71,7 @@ export function CreateEventForm() {
       return;
     }
 
+    trackEvent("event_created", { event_category: "event" });
     toast.success("Event created");
     router.push(`/events/${result.eventId}`);
     router.refresh();

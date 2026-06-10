@@ -37,6 +37,7 @@ import { GuestImportDialog } from "@/components/guests/guest-import-dialog";
 import { GuestStatusBadge } from "@/components/guests/guest-status-badge";
 import { SendGuestInviteButton } from "@/components/emails/send-guest-invite-button";
 import { bulkArchiveGuests } from "@/lib/actions/guest-bulk";
+import { trackEvent } from "@/lib/analytics";
 import {
   bulkSendGuestInviteEmails,
   bulkSendPaymentReminderEmails,
@@ -172,8 +173,20 @@ export function GuestListManager({
         toast.error(result.error);
       }
     } else {
-      bulkToast(action, result as BulkEmailActionResult);
-      if (result.success) router.refresh();
+      const emailResult = result as BulkEmailActionResult;
+      if (
+        action === "invite" &&
+        emailResult.success &&
+        emailResult.sent > 0
+      ) {
+        trackEvent("invite_email_sent", {
+          event_category: "guest",
+          source: "bulk",
+          count: emailResult.sent,
+        });
+      }
+      bulkToast(action, emailResult);
+      if (emailResult.success) router.refresh();
     }
   }
 

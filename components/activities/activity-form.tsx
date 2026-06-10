@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createActivity, updateActivity } from "@/lib/actions/activities";
+import { trackEvent } from "@/lib/analytics";
 import { createActivitySchema } from "@/lib/validations/activity";
 import type { ActivityFormState } from "@/lib/activities/form-input";
 
@@ -83,6 +84,10 @@ export function ActivityForm({
     if (!result.success) {
       toast.error(result.error);
       return;
+    }
+
+    if (mode === "create") {
+      trackEvent("activity_created", { event_category: "activity" });
     }
 
     toast.success(mode === "create" ? "Activity created" : "Activity updated");

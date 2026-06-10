@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { joinEventAsGuest } from "@/lib/actions/guest-access";
+import { trackEvent } from "@/lib/analytics";
 import {
   guestFieldsSchema,
   type CreateGuestInput,
@@ -17,6 +19,7 @@ type JoinGuestFormProps = {
 };
 
 export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<
     Partial<Record<keyof CreateGuestInput, string>>
@@ -51,9 +54,17 @@ export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
     const result = await joinEventAsGuest(inviteToken, parsed.data);
     setIsLoading(false);
 
-    if (result && "error" in result && result.success === false) {
+    if (!result.success) {
       toast.error(result.error);
+      return;
     }
+
+    trackEvent("guest_joined", {
+      event_category: "guest",
+      method: "invite",
+    });
+    router.push(`/e/${result.eventSlug}`);
+    router.refresh();
   }
 
   return (

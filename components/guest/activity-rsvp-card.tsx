@@ -10,6 +10,7 @@ import {
   formatActivityTimeRange,
 } from "@/lib/activities/format";
 import { submitActivityRsvp } from "@/lib/actions/guest-access";
+import { trackEvent } from "@/lib/analytics";
 import {
   RSVP_STATUS_LABELS,
   type GuestRsvpStatus,
@@ -54,6 +55,10 @@ export function ActivityRsvpCard({
       return;
     }
 
+    trackEvent("rsvp_submitted", {
+      event_category: "guest",
+      status: next,
+    });
     setStatus(next);
     toast.success("RSVP saved");
   }

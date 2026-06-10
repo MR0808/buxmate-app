@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackEvent } from "@/lib/analytics";
 import { signUp } from "@/lib/auth-client";
 
 export function SignupForm() {
@@ -34,6 +35,10 @@ export function SignupForm() {
       return;
     }
 
+    trackEvent("sign_up_completed", {
+      event_category: "auth",
+      method: "email",
+    });
     toast.success("Account created — check your email to verify");
     router.push(`/check-email?email=${encodeURIComponent(email)}`);
     router.refresh();

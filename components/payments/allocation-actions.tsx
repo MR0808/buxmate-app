@@ -8,6 +8,7 @@ import {
   markAllocationPaid,
   markAllocationUnpaid,
 } from "@/lib/actions/payments";
+import { trackEvent } from "@/lib/analytics";
 
 type AllocationActionsProps = {
   eventId: string;
@@ -31,6 +32,7 @@ export function AllocationActions({
       toast.error(result.error);
       return;
     }
+    trackEvent("payment_marked_paid", { event_category: "payment" });
     toast.success("Marked as paid");
     router.refresh();
   }

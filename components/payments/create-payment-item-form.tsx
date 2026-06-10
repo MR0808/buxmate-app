@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createPaymentItem } from "@/lib/actions/payments";
+import { trackEvent } from "@/lib/analytics";
 import {
   ALLOCATION_MODES,
   createPaymentItemSchema,
@@ -86,6 +87,7 @@ export function CreatePaymentItemForm({
       return;
     }
 
+    trackEvent("payment_item_created", { event_category: "payment" });
     toast.success("Payment item created");
     router.push(`/events/${eventId}/payments/${result.paymentItemId}`);
     router.refresh();
