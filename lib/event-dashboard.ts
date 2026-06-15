@@ -14,6 +14,7 @@ import { getSignedPhotoUrls } from "@/lib/photos/storage";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
 import { resolveCoverSignedUrl } from "@/lib/covers/queries";
+import { countAllocationsNeedingReview } from "@/lib/payments/recalculate-event-payments";
 import { aggregateRsvpCounts, type RsvpCounts } from "@/lib/rsvp";
 
 const postPreviewSelect = {
@@ -73,7 +74,12 @@ export type EventCommandCentreData = {
     guests: { total: number; joined: number };
     activities: { total: number; active: number; nextTitle: string | null };
     rsvps: { responded: number; pending: number };
-    payments: { allocated: number; paid: number; outstanding: number };
+    payments: {
+      allocated: number;
+      paid: number;
+      outstanding: number;
+      needsReviewCount: number;
+    };
     photos: { total: number };
     announcements: { total: number };
   };
@@ -136,6 +142,7 @@ export async function getEventCommandCentreData(
     photoCount,
     postCount,
     coverSignedUrl,
+    needsReviewCount,
   ] = await Promise.all([
     prisma.eventGuest.groupBy({
       by: ["status"],
@@ -202,6 +209,7 @@ export async function getEventCommandCentreData(
       where: { eventId, status: PostStatus.ACTIVE },
     }),
     resolveCoverSignedUrl(event.coverPath),
+    countAllocationsNeedingReview(eventId),
   ]);
 
   const activityIds = upcomingActivities.map((activity) => activity.id);
@@ -324,6 +332,7 @@ export async function getEventCommandCentreData(
         allocated,
         paid,
         outstanding: Math.max(0, allocated - paid),
+        needsReviewCount,
       },
       photos: { total: photoCount },
       announcements: { total: postCount },

@@ -5,11 +5,14 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
 import type { ReactNode } from "react";
+import { getPublicAppUrl } from "@/lib/env";
+import { LOGO_PATH } from "@/lib/brand";
 
 type EmailLayoutProps = {
   preview: string;
@@ -37,7 +40,13 @@ export function EmailLayout({
       <Body style={body}>
         <Container style={container}>
           <Section style={header}>
-            <Text style={logoMark}>B</Text>
+            <Img
+              src={`${getPublicAppUrl()}${LOGO_PATH}`}
+              width="36"
+              height="45"
+              alt="Buxmate"
+              style={logoImage}
+            />
             <Heading style={brandName}>Buxmate</Heading>
           </Section>
 
@@ -75,18 +84,11 @@ const header = {
   marginBottom: "24px",
 };
 
-const logoMark = {
-  display: "inline-block",
-  width: "40px",
-  height: "40px",
-  lineHeight: "40px",
-  borderRadius: "12px",
-  backgroundColor: "#e07a3a",
-  color: "#ffffff",
-  fontSize: "18px",
-  fontWeight: "700",
-  textAlign: "center" as const,
+const logoImage = {
+  display: "block" as const,
   margin: "0 auto 8px",
+  height: "45px",
+  width: "auto",
 };
 
 const brandName = {

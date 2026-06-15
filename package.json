@@ -3,11 +3,15 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "npx prisma generate && next dev",
+        "dev": "npx prisma generate && next dev --port 3000",
+        "dev:fresh": "npx tsx scripts/clean-next.ts && npx prisma generate && next dev --port 3000",
+        "clean": "npx tsx scripts/clean-next.ts",
         "build": "npx prisma generate && next build",
         "start": "next start",
         "lint": "eslint",
-        "email:dev": "email dev"
+        "email:dev": "email dev",
+        "db:reset": "npx tsx scripts/db-reset.ts",
+        "db:seed": "npx prisma db seed"
     },
     "dependencies": {
         "@next/third-parties": "^16.2.9",
@@ -49,6 +53,7 @@
         "eslint-config-next": "16.2.9",
         "prisma": "^7.8.0",
         "tailwindcss": "^4",
+        "tsx": "^4.20.5",
         "typescript": "^6"
     }
 }

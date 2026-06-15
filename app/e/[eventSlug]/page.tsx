@@ -63,7 +63,8 @@ export default async function GuestEventPage({ params }: GuestEventPageProps) {
 
       <GuestPaymentsSection
         summary={payments.summary}
-        allocations={payments.allocations}
+        activityAllocations={payments.activityAllocations}
+        sharedAllocations={payments.sharedAllocations}
         paymentInstructions={payments.paymentInstructions}
       />
 

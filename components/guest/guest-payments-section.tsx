@@ -1,9 +1,7 @@
 import { CreditCard } from "lucide-react";
 import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
 import { formatMoney } from "@/lib/payments/format";
-import {
-  toAllocationPaymentStatus,
-} from "@/lib/payments/status-labels";
+import { toAllocationPaymentStatus } from "@/lib/payments/status-labels";
 
 type GuestPaymentsSectionProps = {
   summary: {
@@ -11,7 +9,7 @@ type GuestPaymentsSectionProps = {
     paid: number;
     outstanding: number;
   };
-  allocations: {
+  activityAllocations: {
     id: string;
     amountCents: number;
     amountPaidCents: number;
@@ -22,19 +20,76 @@ type GuestPaymentsSectionProps = {
       activity: { title: string } | null;
     };
   }[];
+  sharedAllocations: {
+    id: string;
+    amountCents: number;
+    amountPaidCents: number;
+    status: string;
+    paymentItem: {
+      title: string;
+      description: string | null;
+    };
+  }[];
   paymentInstructions: string | null;
 };
 
+function AllocationRow({
+  title,
+  subtitle,
+  amountCents,
+  amountPaidCents,
+  status,
+}: {
+  title: string;
+  subtitle?: string | null;
+  amountCents: number;
+  amountPaidCents: number;
+  status: string;
+}) {
+  const paymentStatus = toAllocationPaymentStatus(
+    status as "PENDING" | "PARTIAL" | "PAID" | "WAIVED",
+  );
+  const owing = Math.max(0, amountCents - amountPaidCents);
+
+  return (
+    <article className="buxmate-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-medium">{title}</h3>
+          {subtitle ? (
+            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+          ) : null}
+        </div>
+        <PaymentStatusBadge status={paymentStatus} audience="guest" />
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <dt className="text-muted-foreground">Your share</dt>
+          <dd className="font-medium">{formatMoney(amountCents)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Still owing</dt>
+          <dd className="font-medium">{formatMoney(owing)}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
 export function GuestPaymentsSection({
   summary,
-  allocations,
+  activityAllocations,
+  sharedAllocations,
   paymentInstructions,
 }: GuestPaymentsSectionProps) {
+  const hasAllocations =
+    activityAllocations.length > 0 || sharedAllocations.length > 0;
+
   return (
     <section className="mt-8">
       <h2 className="font-heading text-xl font-semibold">Payments</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        What you owe for this event.
+        Your share of activity and shared costs for this event.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -64,50 +119,46 @@ export function GuestPaymentsSection({
         </div>
       </div>
 
-      {allocations.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {allocations.map((allocation) => {
-            const status = toAllocationPaymentStatus(
-              allocation.status as "PENDING" | "PARTIAL" | "PAID" | "WAIVED",
-            );
-            const owing = Math.max(
-              0,
-              allocation.amountCents - allocation.amountPaidCents,
-            );
+      {hasAllocations ? (
+        <div className="mt-6 space-y-6">
+          {activityAllocations.length > 0 ? (
+            <div>
+              <h3 className="font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Activity costs
+              </h3>
+              <div className="mt-3 space-y-3">
+                {activityAllocations.map((allocation) => (
+                  <AllocationRow
+                    key={allocation.id}
+                    title={allocation.paymentItem.title}
+                    subtitle={allocation.paymentItem.activity?.title}
+                    amountCents={allocation.amountCents}
+                    amountPaidCents={allocation.amountPaidCents}
+                    status={allocation.status}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
-            return (
-              <article key={allocation.id} className="buxmate-card p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-medium">{allocation.paymentItem.title}</h3>
-                    {allocation.paymentItem.activity ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {allocation.paymentItem.activity.title}
-                      </p>
-                    ) : null}
-                  </div>
-                  <PaymentStatusBadge status={status} audience="guest" />
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Your share</dt>
-                    <dd className="font-medium">
-                      {formatMoney(allocation.amountCents)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Still owing</dt>
-                    <dd className="font-medium">{formatMoney(owing)}</dd>
-                  </div>
-                </dl>
-                {allocation.paymentItem.description ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {allocation.paymentItem.description}
-                  </p>
-                ) : null}
-              </article>
-            );
-          })}
+          {sharedAllocations.length > 0 ? (
+            <div>
+              <h3 className="font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Shared costs
+              </h3>
+              <div className="mt-3 space-y-3">
+                {sharedAllocations.map((allocation) => (
+                  <AllocationRow
+                    key={allocation.id}
+                    title={allocation.paymentItem.title}
+                    amountCents={allocation.amountCents}
+                    amountPaidCents={allocation.amountPaidCents}
+                    status={allocation.status}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="buxmate-card mt-4 p-6 text-sm text-muted-foreground">

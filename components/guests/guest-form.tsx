@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,8 +36,7 @@ export function GuestForm({
   initial,
   cancelHref,
 }: GuestFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const [errors, setErrors] = useState<
     Partial<Record<keyof CreateGuestInput, string>>
   >({});
@@ -66,16 +66,15 @@ export function GuestForm({
       return;
     }
 
-    setIsLoading(true);
+    start();
 
     const result =
       mode === "create"
         ? await createGuest(eventId, parsed.data)
         : await updateGuest(eventId, guestId!, parsed.data);
 
-    setIsLoading(false);
-
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
@@ -90,16 +89,16 @@ export function GuestForm({
 
     toast.success(mode === "create" ? "Guest added" : "Guest updated");
 
-    if (mode === "create" && "guestId" in result) {
-      router.push(`/events/${eventId}/guests/${result.guestId}`);
-    } else {
-      router.push(`/events/${eventId}/guests/${guestId}`);
-    }
-    router.refresh();
+    const href =
+      mode === "create" && "guestId" in result
+        ? `/events/${eventId}/guests/${result.guestId}`
+        : `/events/${eventId}/guests/${guestId}`;
+    succeed({ href });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input
@@ -148,15 +147,12 @@ export function GuestForm({
         <Button
           type="submit"
           className="rounded-full normal-case tracking-normal"
-          disabled={isLoading}
+          disabled={isBusy}
         >
-          {isLoading
-            ? mode === "create"
-              ? "Adding guest..."
-              : "Saving..."
-            : mode === "create"
-              ? "Add guest"
-              : "Save changes"}
+          {submitLabel({
+            idle: mode === "create" ? "Add guest" : "Save changes",
+            submitting: mode === "create" ? "Adding guest..." : "Saving...",
+          })}
         </Button>
         <Button
           type="button"
@@ -167,6 +163,7 @@ export function GuestForm({
           <Link href={cancelHref}>Cancel</Link>
         </Button>
       </div>
+      </FormBusyShell>
     </form>
   );
 }

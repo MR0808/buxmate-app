@@ -8,6 +8,8 @@ import { SendGuestInviteButton } from "@/components/emails/send-guest-invite-but
 import { GuestInviteLinkPanel } from "@/components/guests/guest-invite-link-panel";
 import { GuestInviteStatusPanel } from "@/components/guests/guest-invite-status-panel";
 import { GuestProfileSections } from "@/components/guests/guest-profile-sections";
+import { GuestOfHonourBadge } from "@/components/guests/guest-of-honour-badge";
+import { GuestOfHonourToggle } from "@/components/guests/guest-of-honour-toggle";
 import { GuestStatusBadge } from "@/components/guests/guest-status-badge";
 import { buildGuestInviteUrl } from "@/lib/guests/invite-url";
 import { getGuestProfile } from "@/lib/guests/queries";
@@ -48,6 +50,7 @@ export default async function GuestDetailPage({
               {guest.name}
             </h1>
             <GuestStatusBadge status={guest.status} />
+            {guest.isGuestOfHonour ? <GuestOfHonourBadge /> : null}
           </div>
         </div>
         {!isArchived && canManage ? (
@@ -102,6 +105,13 @@ export default async function GuestDetailPage({
           </p>
         ) : null}
 
+        {canManage && !isArchived ? (
+          <GuestOfHonourToggle
+            eventId={eventId}
+            guestId={guestId}
+            initial={guest.isGuestOfHonour}
+          />
+        ) : null}
       </section>
 
       <div className="mt-6">

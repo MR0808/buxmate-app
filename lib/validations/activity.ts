@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const ACTIVITY_COST_TYPES = [
+  "FREE",
+  "FIXED_PER_ATTENDING_GUEST",
+  "TOTAL_SPLIT_BY_ATTENDING_GUESTS",
+] as const;
+
+export type ActivityCostTypeInput = (typeof ACTIVITY_COST_TYPES)[number];
+
 const optionalTrimmedString = (max: number) =>
   z
     .string()
@@ -18,6 +26,7 @@ const activityFieldsSchema = z.object({
   location: optionalTrimmedString(200),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().optional().or(z.literal("")),
+  costType: z.enum(ACTIVITY_COST_TYPES).default("FREE"),
   cost: z
     .union([z.string(), z.number()])
     .optional()
@@ -31,7 +40,14 @@ const activityFieldsSchema = z.object({
         .number({ message: "Enter a valid cost" })
         .min(0, "Cost must be zero or greater"),
     ),
-});
+})
+  .refine(
+    (data) => data.costType === "FREE" || data.cost > 0,
+    {
+      message: "Enter a cost amount for paid activities",
+      path: ["cost"],
+    },
+  );
 
 function endTimeAfterStartRefine<T extends { startTime: string; endTime?: string }>(
   data: T,

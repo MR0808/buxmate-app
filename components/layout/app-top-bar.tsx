@@ -14,6 +14,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -50,6 +51,7 @@ export function AppTopBar({ userName, userEmail }: AppTopBarProps) {
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation</SheetTitle>
+              <SheetDescription>Main app navigation menu</SheetDescription>
             </SheetHeader>
             <AppSidebar />
           </SheetContent>

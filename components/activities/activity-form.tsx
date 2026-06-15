@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ACTIVITY_COST_TYPES } from "@/lib/validations/activity";
 import { createActivity, updateActivity } from "@/lib/actions/activities";
 import { trackEvent } from "@/lib/analytics";
 import { createActivitySchema } from "@/lib/validations/activity";
@@ -27,6 +36,7 @@ const defaultValues: ActivityFormState = {
   location: "",
   startTime: "",
   endTime: "",
+  costType: "FREE",
   cost: "",
 };
 
@@ -37,8 +47,7 @@ export function ActivityForm({
   initial,
   cancelHref,
 }: ActivityFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const [errors, setErrors] = useState<
     Partial<Record<keyof ActivityFormState, string>>
   >({});
@@ -72,16 +81,15 @@ export function ActivityForm({
       return;
     }
 
-    setIsLoading(true);
+    start();
 
     const result =
       mode === "create"
         ? await createActivity(eventId, parsed.data)
         : await updateActivity(eventId, activityId!, parsed.data);
 
-    setIsLoading(false);
-
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
@@ -92,12 +100,11 @@ export function ActivityForm({
 
     toast.success(mode === "create" ? "Activity created" : "Activity updated");
 
-    if (mode === "create" && "activityId" in result) {
-      router.push(`/events/${eventId}/activities/${result.activityId}`);
-    } else {
-      router.push(`/events/${eventId}/activities/${activityId}`);
-    }
-    router.refresh();
+    const href =
+      mode === "create" && "activityId" in result
+        ? `/events/${eventId}/activities/${result.activityId}`
+        : `/events/${eventId}/activities/${activityId}`;
+    succeed({ href });
   }
 
   const costDisplay =
@@ -108,7 +115,8 @@ export function ActivityForm({
         : Number(form.cost);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="name">Activity name</Label>
         <Input
@@ -168,27 +176,58 @@ export function ActivityForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cost">Cost per person (AUD)</Label>
-        <Input
-          id="cost"
-          type="number"
-          min={0}
-          step="0.01"
-          value={costDisplay}
-          onChange={(e) =>
-            updateField("cost", e.target.value === "" ? 0 : e.target.value)
+        <Label>Cost type</Label>
+        <Select
+          value={form.costType}
+          onValueChange={(value) =>
+            updateField("costType", value as ActivityFormState["costType"])
           }
-          placeholder="0"
-          className="rounded-xl border border-border bg-card px-4"
-          aria-invalid={Boolean(errors.cost)}
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave as 0 for free activities. Payment tracking comes later.
-        </p>
-        {errors.cost ? (
-          <p className="text-sm text-destructive">{errors.cost}</p>
-        ) : null}
+        >
+          <SelectTrigger className="w-full rounded-xl border border-border bg-card px-4">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ACTIVITY_COST_TYPES[0]}>Free</SelectItem>
+            <SelectItem value={ACTIVITY_COST_TYPES[1]}>
+              Fixed per attending guest
+            </SelectItem>
+            <SelectItem value={ACTIVITY_COST_TYPES[2]}>
+              Total split by attending guests
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {form.costType !== "FREE" ? (
+        <div className="space-y-2">
+          <Label htmlFor="cost">
+            {form.costType === "FIXED_PER_ATTENDING_GUEST"
+              ? "Cost per attending guest (AUD)"
+              : "Total cost to split (AUD)"}
+          </Label>
+          <Input
+            id="cost"
+            type="number"
+            min={0.01}
+            step="0.01"
+            value={costDisplay}
+            onChange={(e) =>
+              updateField("cost", e.target.value === "" ? 0 : e.target.value)
+            }
+            placeholder="0"
+            className="rounded-xl border border-border bg-card px-4"
+            aria-invalid={Boolean(errors.cost)}
+          />
+          <p className="text-xs text-muted-foreground">
+            {form.costType === "FIXED_PER_ATTENDING_GUEST"
+              ? "Each guest marked Going will owe this amount."
+              : "The total will be split equally among guests marked Going."}
+          </p>
+          {errors.cost ? (
+            <p className="text-sm text-destructive">{errors.cost}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
@@ -205,15 +244,12 @@ export function ActivityForm({
         <Button
           type="submit"
           className="rounded-full normal-case tracking-normal"
-          disabled={isLoading}
+          disabled={isBusy}
         >
-          {isLoading
-            ? mode === "create"
-              ? "Creating..."
-              : "Saving..."
-            : mode === "create"
-              ? "Create activity"
-              : "Save changes"}
+          {submitLabel({
+            idle: mode === "create" ? "Create activity" : "Save changes",
+            submitting: mode === "create" ? "Creating..." : "Saving...",
+          })}
         </Button>
         <Button
           type="button"
@@ -224,6 +260,7 @@ export function ActivityForm({
           <Link href={cancelHref}>Cancel</Link>
         </Button>
       </div>
+      </FormBusyShell>
     </form>
   );
 }

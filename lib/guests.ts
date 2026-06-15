@@ -16,6 +16,7 @@ export const guestListSelect = {
   inviteSentAt: true,
   inviteEmailCount: true,
   status: true,
+  isGuestOfHonour: true,
   createdAt: true,
   updatedAt: true,
 } as const;

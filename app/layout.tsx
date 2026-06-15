@@ -3,6 +3,7 @@ import { GoogleTagManager } from '@next/third-parties/google';
 import { Geist_Mono, Noto_Sans, Playfair_Display } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { getGtmId } from '@/lib/analytics';
+import { LOGO_PATH } from '@/lib/brand';
 import { getPublicAppUrl } from '@/lib/env';
 import { cn } from '@/lib/utils';
 import './globals.css';
@@ -40,6 +41,9 @@ export const metadata: Metadata = {
     description:
         'Private event planning for organisers — manage guests, RSVPs, activities and payments.',
     applicationName: 'Buxmate',
+    appleWebApp: {
+        title: 'Buxmate',
+    },
     robots: {
         index: false,
         follow: false
@@ -51,7 +55,8 @@ export const metadata: Metadata = {
         description:
             'Plan the chaos. Split the cost. Keep it private — bucks, hens and group weekends.',
         locale: 'en_AU',
-        url: appUrl
+        url: appUrl,
+        images: [{ url: LOGO_PATH, alt: 'Buxmate' }],
     },
     twitter: {
         card: 'summary',
@@ -69,6 +74,8 @@ export default function RootLayout({
     return (
         <html
             lang="en"
+            data-scroll-behavior="smooth"
+            suppressHydrationWarning
             className={cn(
                 'h-full antialiased',
                 notoSans.variable,
@@ -77,8 +84,8 @@ export default function RootLayout({
                 'font-sans'
             )}
         >
-            {gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
-            <body className="min-h-full flex flex-col">
+            <body className="min-h-full flex flex-col" suppressHydrationWarning>
+                {gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
                 {children}
                 <Toaster richColors position="top-center" />
             </body>

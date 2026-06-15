@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,7 @@ import { createEvent } from "@/lib/actions/events";
 import { trackEvent } from "@/lib/analytics";
 
 export function CreateEventForm() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const [errors, setErrors] = useState<
     Partial<Record<keyof CreateEventInput, string>>
   >({});
@@ -62,23 +62,23 @@ export function CreateEventForm() {
       return;
     }
 
-    setIsLoading(true);
+    start();
     const result = await createEvent(parsed.data);
-    setIsLoading(false);
 
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
 
     trackEvent("event_created", { event_category: "event" });
     toast.success("Event created");
-    router.push(`/events/${result.eventId}`);
-    router.refresh();
+    succeed({ href: `/events/${result.eventId}` });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="name">Event name</Label>
         <Input
@@ -183,10 +183,14 @@ export function CreateEventForm() {
       <Button
         type="submit"
         className="h-11 rounded-full px-8 normal-case tracking-normal"
-        disabled={isLoading}
+        disabled={isBusy}
       >
-        {isLoading ? "Creating event..." : "Create event"}
+        {submitLabel({
+          idle: "Create event",
+          submitting: "Creating event...",
+        })}
       </Button>
+      </FormBusyShell>
     </form>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Archive } from "lucide-react";
 import { toast } from "sonner";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,9 +29,8 @@ export function ArchiveGuestSection({
   guestName,
   status,
 }: ArchiveGuestSectionProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
 
   if (status === "ARCHIVED") {
     return (
@@ -42,23 +41,26 @@ export function ArchiveGuestSection({
   }
 
   async function handleArchive() {
-    setIsLoading(true);
+    start();
     const result = await archiveGuest(eventId, guestId);
-    setIsLoading(false);
 
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
 
     toast.success("Guest archived");
-    setOpen(false);
-    router.push(`/events/${eventId}/guests`);
-    router.refresh();
+    succeed({ href: `/events/${eventId}/guests` });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isBusy) setOpen(nextOpen);
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -81,7 +83,7 @@ export function ArchiveGuestSection({
             variant="ghost"
             className="rounded-full normal-case tracking-normal"
             onClick={() => setOpen(false)}
-            disabled={isLoading}
+            disabled={isBusy}
           >
             Cancel
           </Button>
@@ -89,9 +91,12 @@ export function ArchiveGuestSection({
             variant="destructive"
             className="rounded-full normal-case tracking-normal"
             onClick={handleArchive}
-            disabled={isLoading}
+            disabled={isBusy}
           >
-            {isLoading ? "Archiving..." : "Archive guest"}
+            {submitLabel({
+              idle: "Archive guest",
+              submitting: "Archiving...",
+            })}
           </Button>
         </DialogFooter>
       </DialogContent>

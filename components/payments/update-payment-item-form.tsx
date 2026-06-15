@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,8 +28,7 @@ export function UpdatePaymentItemForm({
   initial,
   cancelHref,
 }: UpdatePaymentItemFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const [errors, setErrors] = useState<
     Partial<Record<keyof UpdatePaymentItemInput, string>>
   >({});
@@ -50,26 +50,26 @@ export function UpdatePaymentItemForm({
       return;
     }
 
-    setIsLoading(true);
+    start();
     const result = await updatePaymentItem(
       eventId,
       paymentItemId,
       parsed.data,
     );
-    setIsLoading(false);
 
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
 
     toast.success("Payment item updated");
-    router.push(`/events/${eventId}/payments/${paymentItemId}`);
-    router.refresh();
+    succeed({ href: `/events/${eventId}/payments/${paymentItemId}` });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="title">Title</Label>
         <Input
@@ -102,14 +102,18 @@ export function UpdatePaymentItemForm({
         <Button
           type="submit"
           className="rounded-full normal-case tracking-normal"
-          disabled={isLoading}
+          disabled={isBusy}
         >
-          {isLoading ? "Saving..." : "Save changes"}
+          {submitLabel({
+            idle: "Save changes",
+            submitting: "Saving...",
+          })}
         </Button>
         <Button variant="outline" className="rounded-full normal-case tracking-normal" asChild>
           <Link href={cancelHref}>Cancel</Link>
         </Button>
       </div>
+      </FormBusyShell>
     </form>
   );
 }

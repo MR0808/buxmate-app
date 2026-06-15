@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, LayoutDashboard, Settings } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
+import { signikaWordmark } from "@/lib/fonts/signika-wordmark";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -23,7 +24,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
   return (
     <aside className={cn("flex h-full flex-col", className)}>
       <div className="border-b border-border/60 px-5 py-5">
-        <Logo />
+        <Logo markOnly wordmarkClassName={signikaWordmark.className} />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-4">

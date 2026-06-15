@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,24 +13,21 @@ import { trackEvent } from "@/lib/analytics";
 import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const verified = searchParams.get("verified") === "1";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsLoading(true);
+    start();
 
     const result = await signIn.email({
       email,
       password,
       callbackURL: "/",
     });
-
-    setIsLoading(false);
 
     if (result.error) {
       const isUnverified =
@@ -37,10 +36,13 @@ export function LoginForm() {
 
       if (isUnverified) {
         toast.error("Please verify your email before signing in");
-        router.push(`/check-email?email=${encodeURIComponent(email)}`);
+        succeed({
+          href: `/check-email?email=${encodeURIComponent(email)}`,
+        });
         return;
       }
 
+      fail();
       toast.error(result.error.message ?? "Unable to sign in");
       return;
     }
@@ -50,12 +52,12 @@ export function LoginForm() {
       method: "email",
     });
     toast.success("Welcome back");
-    router.push("/");
-    router.refresh();
+    succeed({ href: "/" });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-5">
       {verified ? (
         <div className="rounded-2xl border border-border/70 bg-brand-muted/50 p-4 text-sm text-muted-foreground">
           Your email is verified. Sign in to start planning your event.
@@ -101,9 +103,12 @@ export function LoginForm() {
       <Button
         type="submit"
         className="h-11 w-full rounded-full normal-case tracking-normal"
-        disabled={isLoading}
+        disabled={isBusy}
       >
-        {isLoading ? "Signing in..." : "Sign in"}
+        {submitLabel({
+          idle: "Sign in",
+          submitting: "Signing in...",
+        })}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
@@ -112,6 +117,7 @@ export function LoginForm() {
           Create one
         </Link>
       </p>
+      </FormBusyShell>
     </form>
   );
 }

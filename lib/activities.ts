@@ -12,6 +12,7 @@ export const activityListSelect = {
   startsAt: true,
   endsAt: true,
   costCents: true,
+  costType: true,
   status: true,
   sortOrder: true,
   createdAt: true,
@@ -27,6 +28,7 @@ export type OrganiserActivity = {
   startsAt: Date;
   endsAt: Date | null;
   costCents: number;
+  costType: import("@/generated/prisma/client").ActivityCostType;
   status: ActivityStatus;
   sortOrder: number;
   createdAt: Date;

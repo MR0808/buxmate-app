@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +20,7 @@ type JoinGuestFormProps = {
 };
 
 export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
   const [errors, setErrors] = useState<
     Partial<Record<keyof CreateGuestInput, string>>
   >({});
@@ -50,11 +50,11 @@ export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
       return;
     }
 
-    setIsLoading(true);
+    start();
     const result = await joinEventAsGuest(inviteToken, parsed.data);
-    setIsLoading(false);
 
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
@@ -63,12 +63,12 @@ export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
       event_category: "guest",
       method: "invite",
     });
-    router.push(`/e/${result.eventSlug}`);
-    router.refresh();
+    succeed({ href: `/e/${result.eventSlug}` });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+    <form onSubmit={handleSubmit} className="mt-6">
+      <FormBusyShell busy={isBusy} className="space-y-4">
       <p className="text-sm font-medium text-foreground">Your details</p>
 
       <div className="space-y-2">
@@ -117,10 +117,14 @@ export function JoinGuestForm({ inviteToken, initial }: JoinGuestFormProps) {
       <Button
         type="submit"
         className="h-12 w-full rounded-full text-base normal-case tracking-normal"
-        disabled={isLoading}
+        disabled={isBusy}
       >
-        {isLoading ? "Continuing..." : "Continue to Event"}
+        {submitLabel({
+          idle: "Continue to Event",
+          submitting: "Continuing...",
+        })}
       </Button>
+      </FormBusyShell>
     </form>
   );
 }

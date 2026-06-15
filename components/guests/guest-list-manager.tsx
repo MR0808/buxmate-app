@@ -466,36 +466,34 @@ export function GuestListManager({
         open={confirmAction !== null}
         onOpenChange={(open) => !open && setConfirmAction(null)}
       >
-        <DialogContent>
-          {confirmAction ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{confirmCopy[confirmAction].title}</DialogTitle>
-                <DialogDescription>
-                  {confirmCopy[confirmAction].description}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full normal-case tracking-normal"
-                  onClick={() => setConfirmAction(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-full normal-case tracking-normal"
-                  disabled={actionLoading}
-                  onClick={() => runBulkAction(confirmAction)}
-                >
-                  {actionLoading ? "Working..." : "Confirm"}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
+        {confirmAction ? (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{confirmCopy[confirmAction].title}</DialogTitle>
+              <DialogDescription>
+                {confirmCopy[confirmAction].description}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full normal-case tracking-normal"
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="rounded-full normal-case tracking-normal"
+                disabled={actionLoading}
+                onClick={() => runBulkAction(confirmAction)}
+              >
+                {actionLoading ? "Working..." : "Confirm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        ) : null}
       </Dialog>
     </>
   );

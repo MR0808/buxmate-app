@@ -13,6 +13,7 @@ import {
   validateInviteForJoin,
 } from "@/lib/guest-access";
 import { setGuestSessionCookie } from "@/lib/guest-session";
+import { recalculateEventPayments } from "@/lib/payments/recalculate-event-payments";
 import { prisma } from "@/lib/prisma";
 import { guestFieldsSchema, type CreateGuestInput } from "@/lib/validations/guest";
 import { z } from "zod";
@@ -159,11 +160,14 @@ export async function submitActivityRsvp(
     data: { lastAccessedAt: new Date() },
   });
 
+  await recalculateEventPayments(guest.eventId, { activityId });
+
   revalidatePath(`/e/${eventSlug}`);
   revalidatePath(`/events/${guest.eventId}`);
   revalidatePath(`/events/${guest.eventId}/activities`);
   revalidatePath(`/events/${guest.eventId}/activities/${activityId}`);
   revalidatePath(`/events/${guest.eventId}/guests`);
+  revalidatePath(`/events/${guest.eventId}/payments`);
 
   auditLog("rsvp.submitted", {
     guestId: guest.id,

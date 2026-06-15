@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { ActivityStatus, EventStatus } from "@/generated/prisma/client";
 import { assertEventOwned } from "@/lib/activities";
+import { syncActivityPaymentItem } from "@/lib/payments/activity-payment-sync";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
+import { ActivityCostType } from "@/generated/prisma/client";
 import {
   createActivitySchema,
   dollarsToCents,
@@ -88,12 +90,16 @@ export async function createActivity(
       location: data.location || null,
       startsAt,
       endsAt,
-      costCents: dollarsToCents(data.cost),
+      costCents:
+        data.costType === ActivityCostType.FREE ? 0 : dollarsToCents(data.cost),
+      costType: data.costType as ActivityCostType,
       sortOrder,
       status: ActivityStatus.ACTIVE,
     },
     select: { id: true },
   });
+
+  await syncActivityPaymentItem(activity.id);
 
   revalidateActivityPaths(eventId, activity.id);
 
@@ -137,9 +143,13 @@ export async function updateActivity(
       location: data.location || null,
       startsAt,
       endsAt,
-      costCents: dollarsToCents(data.cost),
+      costCents:
+        data.costType === ActivityCostType.FREE ? 0 : dollarsToCents(data.cost),
+      costType: data.costType as ActivityCostType,
     },
   });
+
+  await syncActivityPaymentItem(activityId);
 
   revalidateActivityPaths(eventId, activityId);
 
@@ -158,6 +168,8 @@ export async function archiveActivity(
     where: { id: activityId },
     data: { status: ActivityStatus.ARCHIVED },
   });
+
+  await syncActivityPaymentItem(activityId);
 
   revalidateActivityPaths(eventId, activityId);
 

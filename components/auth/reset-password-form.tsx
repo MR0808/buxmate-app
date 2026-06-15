@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FormBusyShell } from "@/components/shared/form-busy-shell";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +15,9 @@ type ResetPasswordFormProps = {
 };
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,27 +27,26 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       return;
     }
 
-    setIsLoading(true);
+    start();
 
     const result = await resetPassword({
       newPassword: password,
       token,
     });
 
-    setIsLoading(false);
-
     if (result.error) {
+      fail();
       toast.error(result.error.message ?? "Unable to reset password");
       return;
     }
 
     toast.success("Password updated — you can sign in now");
-    router.push("/login");
-    router.refresh();
+    succeed({ href: "/login" });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit}>
+      <FormBusyShell busy={isBusy} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
         <Input
@@ -81,9 +80,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       <Button
         type="submit"
         className="h-11 w-full rounded-full normal-case tracking-normal"
-        disabled={isLoading}
+        disabled={isBusy}
       >
-        {isLoading ? "Updating..." : "Update password"}
+        {submitLabel({
+          idle: "Update password",
+          submitting: "Updating...",
+        })}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
@@ -91,6 +93,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           Back to login
         </Link>
       </p>
+      </FormBusyShell>
     </form>
   );
 }

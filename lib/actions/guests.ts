@@ -6,6 +6,7 @@ import { EventStatus, GuestStatus } from "@/generated/prisma/client";
 import { assertEventOwned } from "@/lib/activities";
 import { auditLog } from "@/lib/audit";
 import { generateUniqueInviteToken } from "@/lib/guests/invite-token";
+import { recalculateEventPayments } from "@/lib/payments/recalculate-event-payments";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedOrganiser } from "@/lib/session";
 import {
@@ -92,7 +93,10 @@ export async function createGuest(
     select: { id: true },
   });
 
+  await recalculateEventPayments(eventId);
+
   revalidateGuestPaths(eventId, guest.id);
+  revalidatePath(`/events/${eventId}/payments`);
 
   auditLog("guest.created", {
     userId: session.user.id,
@@ -158,7 +162,50 @@ export async function archiveGuest(
     data: { status: GuestStatus.ARCHIVED },
   });
 
+  await recalculateEventPayments(eventId);
+
   revalidateGuestPaths(eventId, guestId);
+  revalidatePath(`/events/${eventId}/payments`);
+
+  return { success: true };
+}
+
+export async function setGuestOfHonour(
+  eventId: string,
+  guestId: string,
+  isGuestOfHonour: boolean,
+): Promise<SimpleResult> {
+  const session = await requireVerifiedOrganiser();
+  await assertEventOwned(eventId, session.user.id);
+  const owned = await getOwnedGuestOrNotFound(
+    eventId,
+    guestId,
+    session.user.id,
+  );
+
+  if (owned.status === GuestStatus.ARCHIVED) {
+    return {
+      success: false,
+      error: "Archived guests cannot be marked as guest of honour.",
+    };
+  }
+
+  await prisma.eventGuest.update({
+    where: { id: guestId },
+    data: { isGuestOfHonour },
+  });
+
+  await recalculateEventPayments(eventId);
+
+  revalidateGuestPaths(eventId, guestId);
+  revalidatePath(`/events/${eventId}/payments`);
+
+  auditLog("guest.honour_updated", {
+    userId: session.user.id,
+    eventId,
+    guestId,
+    isGuestOfHonour,
+  });
 
   return { success: true };
 }

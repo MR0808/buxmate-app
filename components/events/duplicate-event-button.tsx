@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useFormSubmit } from "@/lib/hooks/use-form-submit";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,29 +30,31 @@ export function DuplicateEventButton({
   variant = "outline",
   size = "sm",
 }: DuplicateEventButtonProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [copyAnnouncements, setCopyAnnouncements] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isBusy, start, fail, succeed, submitLabel } = useFormSubmit();
 
   async function handleDuplicate() {
-    setIsLoading(true);
+    start();
     const result = await duplicateEvent(eventId, { copyAnnouncements });
-    setIsLoading(false);
 
     if (!result.success) {
+      fail();
       toast.error(result.error);
       return;
     }
 
     toast.success("Event duplicated as draft");
-    setOpen(false);
-    router.push(`/events/${result.eventId}`);
-    router.refresh();
+    succeed({ href: `/events/${result.eventId}` });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isBusy) setOpen(nextOpen);
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -73,9 +75,12 @@ export function DuplicateEventButton({
             copied. New invite links will be generated.
           </DialogDescription>
         </DialogHeader>
-        <label className="flex items-start gap-3 rounded-xl border border-border/70 p-4">
+        <label
+          className={`flex items-start gap-3 rounded-xl border border-border/70 p-4 ${isBusy ? "pointer-events-none opacity-60" : ""}`}
+        >
           <Checkbox
             checked={copyAnnouncements}
+            disabled={isBusy}
             onCheckedChange={(checked) =>
               setCopyAnnouncements(checked === true)
             }
@@ -92,16 +97,19 @@ export function DuplicateEventButton({
             variant="ghost"
             className="rounded-full normal-case tracking-normal"
             onClick={() => setOpen(false)}
-            disabled={isLoading}
+            disabled={isBusy}
           >
             Cancel
           </Button>
           <Button
             className="rounded-full normal-case tracking-normal"
             onClick={handleDuplicate}
-            disabled={isLoading}
+            disabled={isBusy}
           >
-            {isLoading ? "Duplicating..." : "Duplicate as draft"}
+            {submitLabel({
+              idle: "Duplicate as draft",
+              submitting: "Duplicating...",
+            })}
           </Button>
         </DialogFooter>
       </DialogContent>
